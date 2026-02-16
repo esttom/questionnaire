@@ -5,9 +5,10 @@ export async function renderApp(service) {
 
   root.innerHTML = `
     <main class="app">
-      <header>
-        <h1>アンケートサービス UI プロトタイプ</h1>
-        <p>保存処理なしでフォーム構成を動的に編集できます。</p>
+      <header class="hero">
+        <p class="eyebrow">アンケートフォーム</p>
+        <h1>アンケート作成・回答プレビュー</h1>
+        <p class="lead">フォーム構成を編集しながら、回答画面をその場で確認できます。</p>
       </header>
       <div class="grid">
         <section class="panel" id="editor"></section>
@@ -31,17 +32,20 @@ export async function renderApp(service) {
   const draw = () => {
     editorEl.innerHTML = `
       <h2>フォーム作成</h2>
-      <label>タイトル<input id="titleInput" value="${escapeHtml(form.title)}" /></label>
-      <label>説明<textarea id="descriptionInput" rows="3">${escapeHtml(form.description)}</textarea></label>
+      <label class="field-block">タイトル<input id="titleInput" value="${escapeHtml(form.title)}" /></label>
+      <label class="field-block">説明<textarea id="descriptionInput" rows="3">${escapeHtml(form.description)}</textarea></label>
       <div class="question-list">
         ${form.questions
           .map(
             (q, index) => `
               <article class="question-card" data-qid="${q.id}">
-                <header><strong>Q${index + 1}</strong><span>${q.type}</span></header>
-                <label>質問文<input data-role="question-title" value="${escapeHtml(q.title)}" /></label>
-                <label><input data-role="question-required" type="checkbox" ${q.required ? 'checked' : ''} />必須</label>
-                <label>
+                <header class="question-header">
+                  <div class="question-heading"><strong>Q${index + 1}</strong><span>${q.type}</span></div>
+                  <button class="btn btn-danger btn-sm" type="button" data-role="remove-question">質問を削除</button>
+                </header>
+                <label class="field-block">質問文<input data-role="question-title" value="${escapeHtml(q.title)}" /></label>
+                <label class="inline-check"><input data-role="question-required" type="checkbox" ${q.required ? 'checked' : ''} /><span>必須</span></label>
+                <label class="field-block">
                   種別
                   <select data-role="question-type">
                     <option value="singleChoice" ${q.type === 'singleChoice' ? 'selected' : ''}>単一選択</option>
@@ -57,45 +61,44 @@ export async function renderApp(service) {
                           .map(
                             (o) => `<div class="option-row" data-oid="${o.id}">
                               <input data-role="option-label" value="${escapeHtml(o.label)}" />
-                              <button type="button" data-role="remove-option">選択肢削除</button>
+                              <button class="btn btn-ghost" type="button" data-role="remove-option">選択肢削除</button>
                             </div>`
                           )
                           .join('')}
-                        <button type="button" data-role="add-option">選択肢追加</button>
+                        <button class="btn btn-secondary" type="button" data-role="add-option">選択肢追加</button>
                       </div>`
                 }
-                <button type="button" data-role="remove-question">この質問を削除</button>
               </article>`
           )
           .join('')}
       </div>
-      <div>
-        <button type="button" data-role="add-single">単一選択を追加</button>
-        <button type="button" data-role="add-multi">複数選択を追加</button>
-        <button type="button" data-role="add-text">自由記述を追加</button>
+      <div class="actions-row">
+        <button class="btn btn-primary" type="button" data-role="add-single">単一選択を追加</button>
+        <button class="btn btn-primary" type="button" data-role="add-multi">複数選択を追加</button>
+        <button class="btn btn-primary" type="button" data-role="add-text">自由記述を追加</button>
       </div>
     `;
 
     previewEl.innerHTML = `
       <h2>回答プレビュー</h2>
-      <form id="answerForm">
+      <form id="answerForm" autocomplete="off">
         <h3>${escapeHtml(form.title)}</h3>
-        <p>${escapeHtml(form.description)}</p>
+        <p class="preview-description">${escapeHtml(form.description)}</p>
         ${form.questions
           .map((q, index) => {
             if (q.type === 'text') {
-              return `<fieldset class="answer-card"><legend>${index + 1}. ${escapeHtml(q.title)}</legend><textarea data-qid="${q.id}" rows="3"></textarea></fieldset>`;
+              return `<fieldset class="answer-card"><legend class="preview-question-title"><span class="preview-question-index">${index + 1}.</span><span class="preview-question-text">${escapeHtml(q.title)}</span></legend><textarea data-qid="${q.id}" rows="4"></textarea></fieldset>`;
             }
             const inputType = q.type === 'singleChoice' ? 'radio' : 'checkbox';
             const options = (q.options || [])
               .map(
-                (o) => `<label><input data-qid="${q.id}" type="${inputType}" name="${q.id}" value="${escapeHtml(o.label)}"/>${escapeHtml(o.label)}</label>`
+                (o) => `<label class="choice-row"><input data-qid="${q.id}" type="${inputType}" name="${q.id}" value="${escapeHtml(o.label)}"/><span>${escapeHtml(o.label)}</span></label>`
               )
               .join('');
-            return `<fieldset class="answer-card"><legend>${index + 1}. ${escapeHtml(q.title)} ${q.required ? '<span class="required">*</span>' : ''}</legend>${options}</fieldset>`;
+            return `<fieldset class="answer-card"><legend class="preview-question-title"><span class="preview-question-index">${index + 1}.</span><span class="preview-question-text">${escapeHtml(q.title)}</span>${q.required ? '<span class="required">*</span>' : ''}</legend><div class="choices">${options}</div></fieldset>`;
           })
           .join('')}
-        <button type="submit">送信</button>
+        <button class="btn btn-primary" type="submit">送信</button>
         <p id="submitted"></p>
       </form>
     `;
