@@ -1,6 +1,8 @@
 export class FormService {
   constructor(repository) {
     this.repository = repository;
+    this.questionSequence = 100;
+    this.optionSequence = 100;
   }
 
   loadForm(formId) {
@@ -13,5 +15,128 @@ export class FormService {
 
   submit(formId, response) {
     return this.repository.submitResponse(formId, response);
+  }
+
+  updateFormMeta(form, patch) {
+    return { ...form, ...patch };
+  }
+
+  addQuestion(form, type) {
+    const questionId = this.nextQuestionId();
+    const baseQuestion = {
+      id: questionId,
+      title: '新しい質問',
+      required: false,
+      type
+    };
+
+    const nextQuestion =
+      type === 'text'
+        ? baseQuestion
+        : {
+            ...baseQuestion,
+            options: [
+              { id: this.nextOptionId(), label: '選択肢1' },
+              { id: this.nextOptionId(), label: '選択肢2' }
+            ]
+          };
+
+    return {
+      ...form,
+      questions: [...form.questions, nextQuestion]
+    };
+  }
+
+  removeQuestion(form, questionId) {
+    return {
+      ...form,
+      questions: form.questions.filter((question) => question.id !== questionId)
+    };
+  }
+
+  updateQuestion(form, questionId, patch) {
+    return {
+      ...form,
+      questions: form.questions.map((question) =>
+        question.id === questionId ? { ...question, ...patch } : question
+      )
+    };
+  }
+
+  changeQuestionType(form, questionId, nextType) {
+    return {
+      ...form,
+      questions: form.questions.map((question) => {
+        if (question.id !== questionId) return question;
+        if (nextType === 'text') {
+          return { ...question, type: nextType, options: undefined };
+        }
+
+        const normalizedOptions = (question.options || []).length
+          ? question.options
+          : [
+              { id: this.nextOptionId(), label: '選択肢1' },
+              { id: this.nextOptionId(), label: '選択肢2' }
+            ];
+
+        return {
+          ...question,
+          type: nextType,
+          options: normalizedOptions
+        };
+      })
+    };
+  }
+
+  addOption(form, questionId) {
+    return {
+      ...form,
+      questions: form.questions.map((question) => {
+        if (question.id !== questionId || question.type === 'text') return question;
+        const optionCount = (question.options || []).length + 1;
+        return {
+          ...question,
+          options: [...(question.options || []), { id: this.nextOptionId(), label: `選択肢${optionCount}` }]
+        };
+      })
+    };
+  }
+
+  updateOption(form, questionId, optionId, label) {
+    return {
+      ...form,
+      questions: form.questions.map((question) => {
+        if (question.id !== questionId || !question.options) return question;
+        return {
+          ...question,
+          options: question.options.map((option) =>
+            option.id === optionId ? { ...option, label } : option
+          )
+        };
+      })
+    };
+  }
+
+  removeOption(form, questionId, optionId) {
+    return {
+      ...form,
+      questions: form.questions.map((question) => {
+        if (question.id !== questionId || !question.options) return question;
+        return {
+          ...question,
+          options: question.options.filter((option) => option.id !== optionId)
+        };
+      })
+    };
+  }
+
+  nextQuestionId() {
+    this.questionSequence += 1;
+    return `q${this.questionSequence}`;
+  }
+
+  nextOptionId() {
+    this.optionSequence += 1;
+    return `o${this.optionSequence}`;
   }
 }
