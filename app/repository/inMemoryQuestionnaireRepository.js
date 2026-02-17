@@ -22,4 +22,9 @@ export class InMemoryQuestionnaireRepository extends QuestionnaireRepository {
     if (formId !== this.form.id) throw new Error('Form not found');
     this.responses.push(structuredClone(response));
   }
+
+  async getResponses(formId) {
+    if (formId !== this.form.id) throw new Error('Form not found');
+    return structuredClone(this.responses);
+  }
 }
