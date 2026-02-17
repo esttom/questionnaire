@@ -6,18 +6,6 @@ const seedForm = {
   description: '新機能の満足度を教えてください。',
   questions: [
     {
-      id: 'q1',
-      title: '今回の新機能にどの程度満足しましたか？',
-      required: true,
-      type: 'singleChoice',
-      options: [
-        { id: 'q1o1', label: 'とても満足' },
-        { id: 'q1o2', label: '満足' },
-        { id: 'q1o3', label: '普通' },
-        { id: 'q1o4', label: '不満' }
-      ]
-    },
-    {
       id: 'q2',
       title: 'よかったポイントを選んでください',
       required: false,
@@ -27,12 +15,6 @@ const seedForm = {
         { id: 'q2o2', label: '表示速度' },
         { id: 'q2o3', label: 'デザイン' }
       ]
-    },
-    {
-      id: 'q3',
-      title: '改善してほしい点があれば教えてください',
-      required: false,
-      type: 'text'
     }
   ]
 };

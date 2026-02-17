@@ -41,7 +41,7 @@ export async function renderApp(service) {
               <article class="question-card" data-qid="${q.id}">
                 <header class="question-header">
                   <div class="question-heading"><strong>Q${index + 1}</strong><span>${q.type}</span></div>
-                  <button class="btn btn-danger btn-sm" type="button" data-role="remove-question">質問を削除</button>
+                  <button class="btn btn-danger btn-sm icon-btn" type="button" data-role="remove-question" aria-label="質問を削除" title="質問を削除">🗑</button>
                 </header>
                 <label class="field-block">質問文<input data-role="question-title" value="${escapeHtml(q.title)}" /></label>
                 <label class="inline-check"><input data-role="question-required" type="checkbox" ${q.required ? 'checked' : ''} /><span>必須</span></label>
@@ -61,21 +61,21 @@ export async function renderApp(service) {
                           .map(
                             (o) => `<div class="option-row" data-oid="${o.id}">
                               <input data-role="option-label" value="${escapeHtml(o.label)}" />
-                              <button class="btn btn-ghost" type="button" data-role="remove-option">選択肢削除</button>
+                              <button class="btn btn-ghost icon-btn" type="button" data-role="remove-option" aria-label="選択肢を削除" title="選択肢を削除">✕</button>
                             </div>`
                           )
                           .join('')}
-                        <button class="btn btn-secondary" type="button" data-role="add-option">選択肢追加</button>
+                        <button class="btn btn-secondary" type="button" data-role="add-option">＋ 選択肢追加</button>
                       </div>`
                 }
+                <div class="question-insert-actions" aria-label="この質問の後に追加">
+                  <button class="btn btn-ghost icon-btn" type="button" data-role="add-after" data-qid="${q.id}" data-qtype="singleChoice" aria-label="この下に単一選択を追加" title="この下に単一選択を追加">◉</button>
+                  <button class="btn btn-ghost icon-btn" type="button" data-role="add-after" data-qid="${q.id}" data-qtype="multiChoice" aria-label="この下に複数選択を追加" title="この下に複数選択を追加">☑</button>
+                  <button class="btn btn-ghost icon-btn" type="button" data-role="add-after" data-qid="${q.id}" data-qtype="text" aria-label="この下に自由記述を追加" title="この下に自由記述を追加">✎</button>
+                </div>
               </article>`
           )
           .join('')}
-      </div>
-      <div class="actions-row">
-        <button class="btn btn-primary" type="button" data-role="add-single">単一選択を追加</button>
-        <button class="btn btn-primary" type="button" data-role="add-multi">複数選択を追加</button>
-        <button class="btn btn-primary" type="button" data-role="add-text">自由記述を追加</button>
       </div>
     `;
 
@@ -158,19 +158,11 @@ export async function renderApp(service) {
       });
     });
 
-    editorEl.querySelector('[data-role="add-single"]').addEventListener('click', () => {
-      form = service.addQuestion(form, 'singleChoice');
-      draw();
-    });
-
-    editorEl.querySelector('[data-role="add-multi"]').addEventListener('click', () => {
-      form = service.addQuestion(form, 'multiChoice');
-      draw();
-    });
-
-    editorEl.querySelector('[data-role="add-text"]').addEventListener('click', () => {
-      form = service.addQuestion(form, 'text');
-      draw();
+    editorEl.querySelectorAll('[data-role="add-after"]').forEach((buttonEl) => {
+      buttonEl.addEventListener('click', () => {
+        form = service.insertQuestionAfter(form, buttonEl.dataset.qid, buttonEl.dataset.qtype);
+        draw();
+      });
     });
 
     previewEl.querySelectorAll('textarea[data-qid]').forEach((el) => {
