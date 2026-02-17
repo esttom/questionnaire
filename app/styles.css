@@ -444,6 +444,21 @@ input[type='radio'] {
   margin-top: var(--space-2);
 }
 
+.option-add-btn {
+  padding: 7px 11px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #586489;
+  background: #f7f9ff;
+  border-color: #dfe5f7;
+  box-shadow: none;
+}
+
+.option-add-btn:hover {
+  background: #f1f5ff;
+  border-color: #d2dcf5;
+}
+
 
 .required {
   color: #dd345f;
