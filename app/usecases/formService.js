@@ -22,28 +22,26 @@ export class FormService {
   }
 
   addQuestion(form, type) {
-    const questionId = this.nextQuestionId();
-    const baseQuestion = {
-      id: questionId,
-      title: '新しい質問',
-      required: false,
-      type
-    };
-
-    const nextQuestion =
-      type === 'text'
-        ? baseQuestion
-        : {
-            ...baseQuestion,
-            options: [
-              { id: this.nextOptionId(), label: '選択肢1' },
-              { id: this.nextOptionId(), label: '選択肢2' }
-            ]
-          };
-
     return {
       ...form,
-      questions: [...form.questions, nextQuestion]
+      questions: [...form.questions, this.createQuestion(type)]
+    };
+  }
+
+  insertQuestionAfter(form, afterQuestionId, type) {
+    const insertIndex = form.questions.findIndex((question) => question.id === afterQuestionId);
+    if (insertIndex < 0) {
+      return this.addQuestion(form, type);
+    }
+
+    const nextQuestion = this.createQuestion(type);
+    return {
+      ...form,
+      questions: [
+        ...form.questions.slice(0, insertIndex + 1),
+        nextQuestion,
+        ...form.questions.slice(insertIndex + 1)
+      ]
     };
   }
 
@@ -127,6 +125,28 @@ export class FormService {
           options: question.options.filter((option) => option.id !== optionId)
         };
       })
+    };
+  }
+
+  createQuestion(type) {
+    const questionId = this.nextQuestionId();
+    const baseQuestion = {
+      id: questionId,
+      title: '新しい質問',
+      required: false,
+      type
+    };
+
+    if (type === 'text') {
+      return baseQuestion;
+    }
+
+    return {
+      ...baseQuestion,
+      options: [
+        { id: this.nextOptionId(), label: '選択肢1' },
+        { id: this.nextOptionId(), label: '選択肢2' }
+      ]
     };
   }
 
