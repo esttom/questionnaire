@@ -69,9 +69,9 @@ export async function renderApp(service) {
                       </div>`
                 }
                 <div class="question-insert-actions" aria-label="この質問の後に追加">
-                  <button class="btn btn-ghost icon-btn" type="button" data-role="add-after" data-qid="${q.id}" data-qtype="singleChoice" aria-label="この下に単一選択を追加" title="この下に単一選択を追加">◉</button>
-                  <button class="btn btn-ghost icon-btn" type="button" data-role="add-after" data-qid="${q.id}" data-qtype="multiChoice" aria-label="この下に複数選択を追加" title="この下に複数選択を追加">☑</button>
-                  <button class="btn btn-ghost icon-btn" type="button" data-role="add-after" data-qid="${q.id}" data-qtype="text" aria-label="この下に自由記述を追加" title="この下に自由記述を追加">✎</button>
+                  <button class="btn btn-ghost add-type-btn" type="button" data-role="add-after" data-qid="${q.id}" data-qtype="singleChoice" aria-label="この下に単一選択を追加" title="この下に単一選択を追加"><span class="add-type-icon" aria-hidden="true">◉</span><span class="add-type-label">単一</span></button>
+                  <button class="btn btn-ghost add-type-btn" type="button" data-role="add-after" data-qid="${q.id}" data-qtype="multiChoice" aria-label="この下に複数選択を追加" title="この下に複数選択を追加"><span class="add-type-icon" aria-hidden="true">☑</span><span class="add-type-label">複数</span></button>
+                  <button class="btn btn-ghost add-type-btn" type="button" data-role="add-after" data-qid="${q.id}" data-qtype="text" aria-label="この下に自由記述を追加" title="この下に自由記述を追加"><span class="add-type-icon" aria-hidden="true">✎</span><span class="add-type-label">記述</span></button>
                 </div>
               </article>`
           )
@@ -87,7 +87,7 @@ export async function renderApp(service) {
         ${form.questions
           .map((q, index) => {
             if (q.type === 'text') {
-              return `<fieldset class="answer-card"><legend class="preview-question-title"><span class="preview-question-index">${index + 1}.</span><span class="preview-question-text">${escapeHtml(q.title)}</span></legend><textarea data-qid="${q.id}" rows="4"></textarea></fieldset>`;
+              return `<section class="answer-card"><p class="preview-question-title"><span class="preview-question-index">${index + 1}.</span><span class="preview-question-text">${escapeHtml(q.title)}</span></p><textarea data-qid="${q.id}" rows="4"></textarea></section>`;
             }
             const inputType = q.type === 'singleChoice' ? 'radio' : 'checkbox';
             const options = (q.options || [])
@@ -95,7 +95,7 @@ export async function renderApp(service) {
                 (o) => `<label class="choice-row"><input data-qid="${q.id}" type="${inputType}" name="${q.id}" value="${escapeHtml(o.label)}"/><span>${escapeHtml(o.label)}</span></label>`
               )
               .join('');
-            return `<fieldset class="answer-card"><legend class="preview-question-title"><span class="preview-question-index">${index + 1}.</span><span class="preview-question-text">${escapeHtml(q.title)}</span>${q.required ? '<span class="required">*</span>' : ''}</legend><div class="choices">${options}</div></fieldset>`;
+            return `<section class="answer-card"><p class="preview-question-title"><span class="preview-question-index">${index + 1}.</span><span class="preview-question-text">${escapeHtml(q.title)}</span>${q.required ? '<span class="required">*</span>' : ''}</p><div class="choices">${options}</div></section>`;
           })
           .join('')}
         <button class="btn btn-primary" type="submit">送信</button>
