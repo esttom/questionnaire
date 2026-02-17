@@ -76,7 +76,7 @@ export async function renderApp(service) {
                             </div>`
                           )
                           .join('')}
-                        <button class="btn btn-secondary" type="button" data-role="add-option">＋ 選択肢追加</button>
+                        <button class="btn btn-secondary option-add-btn" type="button" data-role="add-option">＋ 選択肢追加</button>
                       </div>`
                 }
                 <div class="question-insert-actions" aria-label="この質問の後に追加">
