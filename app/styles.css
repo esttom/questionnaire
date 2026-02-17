@@ -70,6 +70,23 @@ h2 {
   margin-bottom: var(--space-3);
 }
 
+
+.page-nav {
+  margin-top: var(--space-3);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.page-shell {
+  display: block;
+}
+
+.page-panel {
+  max-width: 920px;
+  margin: 0 auto;
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -460,6 +477,74 @@ input[type='radio'] {
 }
 
 
+.flow-card {
+  margin-top: var(--space-3);
+  border: 1px solid #e6e9fa;
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  background: linear-gradient(180deg, #ffffff 0%, #fdfdff 100%);
+  box-shadow: 0 8px 18px rgba(88, 105, 168, 0.08);
+}
+
+.flow-summary-list {
+  margin: var(--space-3) 0;
+  padding-left: 1.2em;
+  color: #47547c;
+}
+
+.flow-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.field-error {
+  margin: var(--space-2) 0 0;
+  color: #cc2e58;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.confirm-list {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.confirm-item {
+  border: 1px solid #e7ebff;
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  background: #fafbff;
+}
+
+.confirm-question {
+  margin: 0;
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-weight: 600;
+  color: #364060;
+}
+
+.confirm-answer {
+  margin: var(--space-1) 0 0;
+  color: #525f87;
+  white-space: pre-wrap;
+}
+
+.choice-summary-list,
+.text-answer-list {
+  display: grid;
+  gap: 4px;
+}
+
+.complete-card {
+  border-color: #d3f1df;
+  background: linear-gradient(180deg, #f9fffc 0%, #f3fff8 100%);
+}
+
 .required {
   color: #dd345f;
 }
@@ -473,6 +558,11 @@ input[type='radio'] {
 @media (max-width: 900px) {
   .app {
     padding: var(--space-5) var(--space-3) 32px;
+  }
+
+
+  .page-nav .btn {
+    flex: 1 1 160px;
   }
 
   .grid {
@@ -515,5 +605,9 @@ input[type='radio'] {
   .add-type-btn {
     flex: 1 1 88px;
     justify-content: center;
+  }
+
+  .flow-actions {
+    flex-direction: column;
   }
 }

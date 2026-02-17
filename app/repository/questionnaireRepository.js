@@ -10,4 +10,7 @@ export class QuestionnaireRepository {
 
   /** @param {string} _formId @param {Record<string, string|string[]>} _response */
   async submitResponse(_formId, _response) {}
+
+  /** @param {string} _formId */
+  async getResponses(_formId) {}
 }

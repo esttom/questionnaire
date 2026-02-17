@@ -17,6 +17,133 @@ export class FormService {
     return this.repository.submitResponse(formId, response);
   }
 
+  loadResponses(formId) {
+    return this.repository.getResponses(formId);
+  }
+
+  summarizeResponses(form, responses) {
+    return {
+      totalResponses: responses.length,
+      questions: form.questions.map((question) => this.summarizeQuestion(question, responses))
+    };
+  }
+
+  summarizeQuestion(question, responses) {
+    const rawAnswers = responses.map((response) => response[question.id]);
+
+    if (question.type === 'text') {
+      const answeredTexts = rawAnswers
+        .filter((value) => typeof value === 'string' && value.trim() !== '')
+        .map((value) => value.trim());
+
+      return {
+        id: question.id,
+        type: question.type,
+        title: question.title,
+        required: question.required,
+        answeredCount: answeredTexts.length,
+        unansweredCount: responses.length - answeredTexts.length,
+        recentAnswers: answeredTexts.slice(-5).reverse()
+      };
+    }
+
+    const optionCounts = (question.options || []).map((option) => ({
+      label: option.label,
+      count: 0
+    }));
+
+    rawAnswers.forEach((value) => {
+      if (question.type === 'singleChoice') {
+        const target = optionCounts.find((item) => item.label === value);
+        if (target) target.count += 1;
+        return;
+      }
+
+      if (!Array.isArray(value)) {
+        return;
+      }
+
+      value.forEach((selected) => {
+        const target = optionCounts.find((item) => item.label === selected);
+        if (target) target.count += 1;
+      });
+    });
+
+    const answeredCount = rawAnswers.filter((value) =>
+      question.type === 'singleChoice'
+        ? typeof value === 'string' && value !== ''
+        : Array.isArray(value) && value.length > 0
+    ).length;
+
+    return {
+      id: question.id,
+      type: question.type,
+      title: question.title,
+      required: question.required,
+      answeredCount,
+      unansweredCount: responses.length - answeredCount,
+      optionCounts
+    };
+  }
+
+  validateResponse(form, response) {
+    const errors = {};
+
+    form.questions.forEach((question) => {
+      const value = response[question.id];
+      if (!question.required) {
+        return;
+      }
+
+      if (question.type === 'text') {
+        if (typeof value !== 'string' || value.trim() === '') {
+          errors[question.id] = '必須項目です。入力してください。';
+        }
+        return;
+      }
+
+      if (question.type === 'singleChoice') {
+        if (typeof value !== 'string' || value === '') {
+          errors[question.id] = '必須項目です。1つ選択してください。';
+        }
+        return;
+      }
+
+      if (!Array.isArray(value) || value.length === 0) {
+        errors[question.id] = '必須項目です。1つ以上選択してください。';
+      }
+    });
+
+    return {
+      isValid: Object.keys(errors).length === 0,
+      errors
+    };
+  }
+
+  toConfirmationRows(form, response) {
+    return form.questions.map((question) => ({
+      id: question.id,
+      question: question.title,
+      required: question.required,
+      answer: this.toAnswerText(question, response[question.id])
+    }));
+  }
+
+  toAnswerText(question, value) {
+    if (question.type === 'multiChoice') {
+      if (!Array.isArray(value) || value.length === 0) {
+        return '（未回答）';
+      }
+      return value.join(' / ');
+    }
+
+    if (typeof value !== 'string' || value.trim() === '') {
+      return '（未回答）';
+    }
+
+    return value;
+  }
+
   updateFormMeta(form, patch) {
     return { ...form, ...patch };
   }

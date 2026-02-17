@@ -1,6 +1,6 @@
 # Questionnaire UI Prototype
 
-Googleフォーム風のアンケート作成 + 回答のUIプロトタイプです。
+Googleフォーム風のアンケート作成・回答・集計が可能なUIです。
 
 ## GitHub Pages で公開する方法
 
