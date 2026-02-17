@@ -20,6 +20,11 @@ export async function renderApp(service) {
   const editorEl = root.querySelector('#editor');
   const previewEl = root.querySelector('#preview');
   const response = {};
+  const questionTypeLabels = {
+    singleChoice: '単一選択',
+    multiChoice: '複数選択',
+    text: '自由記述',
+  };
 
   const escapeHtml = (value) =>
     String(value)
@@ -40,19 +45,25 @@ export async function renderApp(service) {
             (q, index) => `
               <article class="question-card" data-qid="${q.id}">
                 <header class="question-header">
-                  <div class="question-heading"><strong>Q${index + 1}</strong><span>${q.type}</span></div>
+                  <div class="question-heading">
+                    <strong>Q${index + 1}</strong>
+                    <span class="type-chip">${questionTypeLabels[q.type] ?? q.type}</span>
+                    <span class="required-chip ${q.required ? 'is-required' : 'is-optional'}">${q.required ? '必須' : '任意'}</span>
+                  </div>
                   <button class="btn btn-danger btn-sm icon-btn" type="button" data-role="remove-question" aria-label="質問を削除" title="質問を削除">🗑</button>
                 </header>
                 <label class="field-block">質問文<input data-role="question-title" value="${escapeHtml(q.title)}" /></label>
-                <label class="inline-check"><input data-role="question-required" type="checkbox" ${q.required ? 'checked' : ''} /><span>必須</span></label>
-                <label class="field-block">
-                  種別
-                  <select data-role="question-type">
-                    <option value="singleChoice" ${q.type === 'singleChoice' ? 'selected' : ''}>単一選択</option>
-                    <option value="multiChoice" ${q.type === 'multiChoice' ? 'selected' : ''}>複数選択</option>
-                    <option value="text" ${q.type === 'text' ? 'selected' : ''}>自由記述</option>
-                  </select>
-                </label>
+                <div class="question-config-panel" aria-label="質問の設定">
+                  <label class="inline-check compact-check"><input data-role="question-required" type="checkbox" ${q.required ? 'checked' : ''} /><span>必須回答</span></label>
+                  <label class="inline-config-field subtle-type-field">
+                    <span>種別変更</span>
+                    <select data-role="question-type" aria-label="質問の種別変更">
+                      <option value="singleChoice" ${q.type === 'singleChoice' ? 'selected' : ''}>単一選択</option>
+                      <option value="multiChoice" ${q.type === 'multiChoice' ? 'selected' : ''}>複数選択</option>
+                      <option value="text" ${q.type === 'text' ? 'selected' : ''}>自由記述</option>
+                    </select>
+                  </label>
+                </div>
                 ${
                   q.type === 'text'
                     ? '<small>自由記述では選択肢は不要です。</small>'
@@ -69,6 +80,7 @@ export async function renderApp(service) {
                       </div>`
                 }
                 <div class="question-insert-actions" aria-label="この質問の後に追加">
+                  <span class="insert-action-label">この下に質問を追加</span>
                   <button class="btn btn-ghost add-type-btn" type="button" data-role="add-after" data-qid="${q.id}" data-qtype="singleChoice" aria-label="この下に単一選択を追加" title="この下に単一選択を追加"><span class="add-type-icon" aria-hidden="true">◉</span><span class="add-type-label">単一</span></button>
                   <button class="btn btn-ghost add-type-btn" type="button" data-role="add-after" data-qid="${q.id}" data-qtype="multiChoice" aria-label="この下に複数選択を追加" title="この下に複数選択を追加"><span class="add-type-icon" aria-hidden="true">☑</span><span class="add-type-label">複数</span></button>
                   <button class="btn btn-ghost add-type-btn" type="button" data-role="add-after" data-qid="${q.id}" data-qtype="text" aria-label="この下に自由記述を追加" title="この下に自由記述を追加"><span class="add-type-icon" aria-hidden="true">✎</span><span class="add-type-label">記述</span></button>
@@ -80,7 +92,10 @@ export async function renderApp(service) {
     `;
 
     previewEl.innerHTML = `
-      <h2>回答プレビュー</h2>
+      <div class="preview-headline">
+        <h2>回答プレビュー</h2>
+        <p class="preview-meta">全 ${form.questions.length} 問</p>
+      </div>
       <form id="answerForm" autocomplete="off">
         <h3>${escapeHtml(form.title)}</h3>
         <p class="preview-description">${escapeHtml(form.description)}</p>
