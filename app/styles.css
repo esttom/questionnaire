@@ -566,6 +566,62 @@ input[type='radio'] {
   margin: 0;
 }
 
+
+.builder-headline {
+  align-items: center;
+}
+
+.builder-head-actions {
+  align-items: center;
+}
+
+.builder-head-actions .save-state,
+.builder-head-actions .status-chip {
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 6px 10px;
+}
+
+.builder-head-actions .status-chip {
+  margin-left: 0;
+}
+
+.builder-footer-actions {
+  position: sticky;
+  bottom: 12px;
+  z-index: 3;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid #dfe5f8;
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  box-shadow: 0 10px 24px rgba(63, 76, 130, 0.16);
+}
+
+.builder-error-panel {
+  margin-top: var(--space-3);
+  border: 1px solid #f5c4d1;
+  border-radius: var(--radius-md);
+  background: #fff4f8;
+  padding: var(--space-2) var(--space-3);
+  color: #9e2047;
+}
+
+.builder-error-title {
+  margin: 0;
+  font-weight: 700;
+}
+
+.builder-error-panel ul {
+  margin: var(--space-2) 0 0;
+  padding-left: 1.3em;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  box-shadow: none;
+}
+
 @media (max-width: 900px) {
   .app {
     padding: var(--space-5) var(--space-3) 32px;
@@ -610,6 +666,11 @@ input[type='radio'] {
 
   .flow-actions {
     flex-direction: column;
+  }
+
+  .builder-footer-actions {
+    bottom: 8px;
+    padding: var(--space-2);
   }
 }
 

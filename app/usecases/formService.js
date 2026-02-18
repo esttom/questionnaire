@@ -48,6 +48,7 @@ export class FormService {
       ownerId: this.requireUserId(),
       title: '',
       description: '',
+      status: 'draft',
       questions: []
     };
   }

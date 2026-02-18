@@ -7,10 +7,14 @@ export async function renderApp(service) {
   let validationErrors = {};
   let submittedMessage = '';
   let editorMessage = '';
+  let builderErrors = [];
   let builderActiveTab = 'edit';
   let dashboardQuery = '';
   let dashboardStatusFilter = 'all';
   let formSaveState = 'saved';
+  let isAnswerSubmitted = false;
+  let isAnswerCompleted = false;
+  let answerSessionFormId = '';
   const authStorageKey = 'questionnaire-auth-v1';
 
   const questionTypeLabels = {
@@ -30,7 +34,7 @@ export async function renderApp(service) {
   const parseRoute = () => {
     const clean = window.location.hash.replace(/^#\/?/, '');
     const [page = 'login', formId = ''] = clean.split('/');
-    if (!['login', 'dashboard', 'builder', 'answer', 'results'].includes(page)) {
+    if (!['login', 'dashboard', 'builder', 'answer', 'answer-complete', 'results'].includes(page)) {
       return { page: 'login', formId: '' };
     }
     return { page, formId };
@@ -60,21 +64,7 @@ export async function renderApp(service) {
     }
   };
 
-  const classifyFormStatus = (form) => {
-    const hasTitle = String(form.title || '').trim() !== '';
-    const hasQuestions = Array.isArray(form.questions) && form.questions.length > 0;
-    const hasInvalidChoiceQuestion = (form.questions || []).some(
-      (question) =>
-        question.type !== 'text' &&
-        ((question.options || []).filter((option) => String(option.label || '').trim() !== '').length < 2)
-    );
-
-    if (!hasTitle || !hasQuestions || hasInvalidChoiceQuestion) {
-      return 'draft';
-    }
-
-    return 'published';
-  };
+  const classifyFormStatus = (form) => form.status === 'published' ? 'published' : 'draft';
 
   const getBuilderWarnings = (form) => {
     const warnings = [];
@@ -140,7 +130,7 @@ export async function renderApp(service) {
               <label class="dashboard-filter-field">表示状態
                 <select data-role="dashboard-status-filter">
                   <option value="all" ${dashboardStatusFilter === 'all' ? 'selected' : ''}>すべて</option>
-                  <option value="published" ${dashboardStatusFilter === 'published' ? 'selected' : ''}>公開可能</option>
+                  <option value="published" ${dashboardStatusFilter === 'published' ? 'selected' : ''}>公開中</option>
                   <option value="draft" ${dashboardStatusFilter === 'draft' ? 'selected' : ''}>下書き</option>
                 </select>
               </label>
@@ -154,20 +144,20 @@ export async function renderApp(service) {
                 .map(
                   (form) => `
                     <article class="form-list-card">
-                      <h3>${escapeHtml(form.title || '（無題のフォーム）')} <span class="status-chip status-chip-${classifyFormStatus(form)}">${classifyFormStatus(form) === 'published' ? '公開可能' : '下書き'}</span></h3>
+                      <h3>${escapeHtml(form.title || '（無題のフォーム）')} <span class="status-chip status-chip-${classifyFormStatus(form)}">${classifyFormStatus(form) === 'published' ? '公開中' : '下書き'}</span></h3>
                       <p class="preview-description">質問数: ${form.questions.length}</p>
                       <div class="action-group">
                         <p class="action-group-title">管理</p>
                         <div class="row-actions">
                           <button class="btn btn-secondary" type="button" data-role="open-edit" data-form-id="${escapeHtml(form.id)}">編集する</button>
-                          <button class="btn btn-ghost" type="button" data-role="open-results" data-form-id="${escapeHtml(form.id)}">集計を見る</button>
+                          <button class="btn btn-ghost" type="button" data-role="open-results" data-form-id="${escapeHtml(form.id)}" ${classifyFormStatus(form) !== 'published' ? 'disabled' : ''}>集計を見る</button>
                         </div>
                       </div>
                       <div class="action-group">
                         <p class="action-group-title">回答受付</p>
                         <div class="row-actions">
-                          <button class="btn btn-secondary" type="button" data-role="open-answer" data-form-id="${escapeHtml(form.id)}">回答画面を開く</button>
-                          <button class="btn btn-ghost" type="button" data-role="copy-answer-url" data-form-id="${escapeHtml(form.id)}">回答URLをコピー</button>
+                          <button class="btn btn-secondary" type="button" data-role="open-answer" data-form-id="${escapeHtml(form.id)}" ${classifyFormStatus(form) !== 'published' ? 'disabled' : ''}>回答画面を開く</button>
+                          <button class="btn btn-ghost" type="button" data-role="copy-answer-url" data-form-id="${escapeHtml(form.id)}" ${classifyFormStatus(form) !== 'published' ? 'disabled' : ''}>回答URLをコピー</button>
                         </div>
                       </div>
                     </article>
@@ -196,19 +186,21 @@ export async function renderApp(service) {
 
     return `
       <section class="panel page-panel" id="editor">
-        <div class="page-headline">
+        <div class="page-headline builder-headline">
           <h2>フォーム作成・編集</h2>
-          <div class="row-actions">
+          <div class="row-actions builder-head-actions">
             <p class="save-state save-state-${formSaveState}">${formSaveState === 'saved' ? '保存済み' : formSaveState === 'error' ? '保存エラー' : '未保存'}</p>
-            <button class="btn btn-ghost" type="button" data-role="check-form">公開前チェック</button>
+            <p class="status-chip status-chip-${classifyFormStatus(form)}">${classifyFormStatus(form) === 'published' ? '公開中' : '下書き'}</p>
             <button class="btn btn-secondary" type="button" data-role="back-dashboard">ダッシュボードへ戻る</button>
-            <button class="btn btn-primary" type="button" data-role="save-form">保存</button>
           </div>
         </div>
         <div class="builder-tablist" role="tablist" aria-label="編集画面タブ">
           <button class="builder-tab ${builderActiveTab === 'edit' ? 'is-active' : ''}" type="button" role="tab" aria-selected="${builderActiveTab === 'edit'}" data-role="builder-tab" data-tab="edit">編集</button>
           <button class="builder-tab ${builderActiveTab === 'preview' ? 'is-active' : ''}" type="button" role="tab" aria-selected="${builderActiveTab === 'preview'}" data-role="builder-tab" data-tab="preview">プレビュー</button>
         </div>
+        ${builderErrors.length
+          ? `<section class="builder-error-panel" role="alert" aria-live="assertive"><p class="builder-error-title">公開前チェックで修正が必要です。</p><ul>${builderErrors.map((error) => `<li>${escapeHtml(error)}</li>`).join('')}</ul></section>`
+          : ''}
         ${
           builderActiveTab === 'edit'
             ? `<label class="field-block">タイトル<input id="titleInput" value="${escapeHtml(form.title)}" /></label>
@@ -260,15 +252,17 @@ export async function renderApp(service) {
             .join('')}
           ${
             form.questions.length === 0
-              ? '<p class="preview-description">質問がありません。下のボタンから追加してください。</p>'
+              ? '<p class="preview-description">質問がありません。カード内の「質問を追加」ボタンから追加してください。</p>'
               : ''
           }
-        </div>
-        <div class="flow-actions">
-          <button class="btn btn-ghost" type="button" data-role="add-new-question">＋ 質問を追加</button>
         </div>`
-            : renderBuilderPreview()
+            : `${renderBuilderPreview()}
+        <p class="preview-description">内容に問題がなければ「公開する」を押してください。</p>`
         }
+        <div class="flow-actions builder-footer-actions">
+          <button class="btn btn-secondary" type="button" data-role="save-draft">下書き保存</button>
+          <button class="btn btn-primary" type="button" data-role="publish-form" ${builderActiveTab !== 'preview' ? 'disabled' : ''}>公開する</button>
+        </div>
         <p id="submitted">${escapeHtml(editorMessage)}</p>
       </section>
     `;
@@ -316,6 +310,26 @@ export async function renderApp(service) {
     const answeredCount = form.questions.filter((question) => isQuestionAnswered(question, currentResponse[question.id])).length;
     const progress = form.questions.length === 0 ? 0 : Math.round((answeredCount / form.questions.length) * 100);
 
+    if (isAnswerSubmitted) {
+      return `
+        <section class="panel page-panel">
+          <div class="page-headline">
+            <h2>回答内容の確認</h2>
+          </div>
+          <h3>${escapeHtml(form.title || '（無題のフォーム）')}</h3>
+          <p class="preview-description">回答は送信済みです。内容を確認の上、回答終了へ進んでください。</p>
+          <div class="answer-progress" aria-live="polite">
+            <p class="preview-meta">回答進捗: ${answeredCount} / ${form.questions.length}</p>
+            <div class="answer-progress-track"><div class="answer-progress-fill" style="width:${progress}%"></div></div>
+          </div>
+          <div class="flow-actions">
+            <button class="btn btn-primary" type="button" data-role="complete-answer">回答を完了する</button>
+          </div>
+          <p id="submitted">${escapeHtml(submittedMessage)}</p>
+        </section>
+      `;
+    }
+
     return `
       <section class="panel page-panel">
         <div class="page-headline">
@@ -334,6 +348,20 @@ export async function renderApp(service) {
           </div>
         </form>
         <p id="submitted">${escapeHtml(submittedMessage)}</p>
+      </section>
+    `;
+  };
+
+  const renderAnswerCompletePage = () => {
+    const form = currentForm;
+    if (!form) return '<section class="panel page-panel"><p>フォームが見つかりません。</p></section>';
+    return `
+      <section class="panel page-panel complete-card">
+        <div class="page-headline">
+          <h2>回答完了</h2>
+        </div>
+        <h3>${escapeHtml(form.title || '（無題のフォーム）')}</h3>
+        <p class="preview-description">回答は正常に受け付けられました。ご協力ありがとうございました。</p>
       </section>
     `;
   };
@@ -369,6 +397,18 @@ export async function renderApp(service) {
   const renderResultsPage = async () => {
     const form = currentForm;
     if (!form) return '<section class="panel page-panel"><p>フォームが見つかりません。</p></section>';
+    if (classifyFormStatus(form) !== 'published') {
+      return `
+        <section class="panel page-panel">
+          <div class="page-headline">
+            <h2>集計結果画面</h2>
+            <button class="btn btn-secondary" type="button" data-role="back-dashboard">ダッシュボードへ戻る</button>
+          </div>
+          <p class="field-error">下書きフォームは集計を表示できません。公開後に確認してください。</p>
+        </section>
+      `;
+    }
+
     const responses = await service.loadResponses(form.id);
     const summary = service.summarizeResponses(form, responses);
 
@@ -396,43 +436,65 @@ export async function renderApp(service) {
     editorEl.querySelectorAll('[data-role="builder-tab"]').forEach((buttonEl) => {
       buttonEl.addEventListener('click', () => {
         builderActiveTab = buttonEl.dataset.tab;
+        editorMessage = '';
         draw();
       });
     });
 
+    editorEl.querySelector('[data-role="back-dashboard"]').addEventListener('click', () => {
+      editorMessage = '';
+      builderErrors = [];
+      navigate('dashboard');
+    });
+
+    const saveBuilderForm = async (status) => {
+      if (!currentForm) return;
+      const warnings = getBuilderWarnings(currentForm);
+      if (status === 'published' && warnings.length > 0) {
+        builderErrors = warnings;
+        editorMessage = '公開前チェックでエラーがあります。内容を修正してから再度公開してください。';
+        builderActiveTab = 'edit';
+        formSaveState = 'unsaved';
+        draw();
+        return;
+      }
+
+      builderErrors = [];
+      currentForm = service.updateFormMeta(currentForm, { status });
+      try {
+        await service.saveForm(currentForm);
+        editorMessage = status === 'published' ? 'フォームを公開しました。' : 'フォームを下書き保存しました。';
+        formSaveState = 'saved';
+      } catch {
+        editorMessage = status === 'published' ? 'フォームの公開に失敗しました。' : 'フォームの保存に失敗しました。';
+        formSaveState = 'error';
+      }
+      draw();
+    };
+
+    editorEl.querySelector('[data-role="save-draft"]').addEventListener('click', async () => {
+      await saveBuilderForm('draft');
+    });
+
+    editorEl.querySelector('[data-role="publish-form"]').addEventListener('click', async () => {
+      await saveBuilderForm('published');
+    });
+
     if (builderActiveTab !== 'edit') {
-      editorEl.querySelector('[data-role="check-form"]').addEventListener('click', () => {
-        const warnings = getBuilderWarnings(currentForm);
-        editorMessage = warnings.length ? `公開前チェック: ${warnings.join(' ')}` : '公開前チェック: 問題は見つかりませんでした。';
-        draw();
-      });
-      editorEl.querySelector('[data-role="back-dashboard"]').addEventListener('click', () => {
-        editorMessage = '';
-        navigate('dashboard');
-      });
-      editorEl.querySelector('[data-role="save-form"]').addEventListener('click', async () => {
-        try {
-          await service.saveForm(currentForm);
-          editorMessage = 'フォームを保存しました。';
-          formSaveState = 'saved';
-        } catch {
-          editorMessage = 'フォームの保存に失敗しました。';
-          formSaveState = 'error';
-        }
-        draw();
-      });
       return;
     }
 
     editorEl.querySelector('#titleInput').addEventListener('input', (event) => {
       currentForm = service.updateFormMeta(currentForm, { title: event.target.value });
       editorMessage = '';
+      builderErrors = [];
       formSaveState = 'unsaved';
     });
 
     editorEl.querySelector('#descriptionInput').addEventListener('input', (event) => {
       currentForm = service.updateFormMeta(currentForm, { description: event.target.value });
       editorMessage = '';
+      builderErrors = [];
       formSaveState = 'unsaved';
     });
 
@@ -442,12 +504,14 @@ export async function renderApp(service) {
       questionEl.querySelector('[data-role="question-title"]').addEventListener('input', (event) => {
         currentForm = service.updateQuestion(currentForm, qid, { title: event.target.value });
         editorMessage = '';
+        builderErrors = [];
         formSaveState = 'unsaved';
       });
 
       questionEl.querySelector('[data-role="question-required"]').addEventListener('change', (event) => {
         currentForm = service.updateQuestion(currentForm, qid, { required: event.target.checked });
         editorMessage = '';
+        builderErrors = [];
         formSaveState = 'unsaved';
         draw();
       });
@@ -457,6 +521,7 @@ export async function renderApp(service) {
         delete currentResponse[qid];
         delete validationErrors[qid];
         editorMessage = '';
+        builderErrors = [];
         formSaveState = 'unsaved';
         draw();
       });
@@ -466,6 +531,7 @@ export async function renderApp(service) {
         delete currentResponse[qid];
         delete validationErrors[qid];
         editorMessage = '';
+        builderErrors = [];
         formSaveState = 'unsaved';
         draw();
       });
@@ -473,6 +539,7 @@ export async function renderApp(service) {
       questionEl.querySelector('[data-role="add-option"]')?.addEventListener('click', () => {
         currentForm = service.addOption(currentForm, qid);
         editorMessage = '';
+        builderErrors = [];
         formSaveState = 'unsaved';
         draw();
       });
@@ -483,12 +550,14 @@ export async function renderApp(service) {
         optionEl.querySelector('[data-role="option-label"]').addEventListener('input', (event) => {
           currentForm = service.updateOption(currentForm, qid, oid, event.target.value);
           editorMessage = '';
+          builderErrors = [];
           formSaveState = 'unsaved';
         });
 
         optionEl.querySelector('[data-role="remove-option"]').addEventListener('click', () => {
           currentForm = service.removeOption(currentForm, qid, oid);
           editorMessage = '';
+          builderErrors = [];
           formSaveState = 'unsaved';
           draw();
         });
@@ -499,41 +568,10 @@ export async function renderApp(service) {
       buttonEl.addEventListener('click', () => {
         currentForm = service.insertQuestionAfter(currentForm, buttonEl.dataset.qid);
         editorMessage = '';
+        builderErrors = [];
         formSaveState = 'unsaved';
         draw();
       });
-    });
-
-    editorEl.querySelectorAll('[data-role="add-new-question"]').forEach((buttonEl) => {
-      buttonEl.addEventListener('click', () => {
-        currentForm = service.addQuestion(currentForm);
-        editorMessage = '';
-        formSaveState = 'unsaved';
-        draw();
-      });
-    });
-
-    editorEl.querySelector('[data-role="check-form"]').addEventListener('click', () => {
-      const warnings = getBuilderWarnings(currentForm);
-      editorMessage = warnings.length ? `公開前チェック: ${warnings.join(' ')}` : '公開前チェック: 問題は見つかりませんでした。';
-      draw();
-    });
-
-    editorEl.querySelector('[data-role="save-form"]').addEventListener('click', async () => {
-      try {
-        await service.saveForm(currentForm);
-        editorMessage = 'フォームを保存しました。';
-        formSaveState = 'saved';
-      } catch {
-        editorMessage = 'フォームの保存に失敗しました。';
-        formSaveState = 'error';
-      }
-      draw();
-    });
-
-    editorEl.querySelector('[data-role="back-dashboard"]').addEventListener('click', () => {
-      editorMessage = '';
-      navigate('dashboard');
     });
   };
 
@@ -617,12 +655,15 @@ export async function renderApp(service) {
       }
 
       await service.submit(currentForm.id, currentResponse);
-      submittedMessage = '回答を送信しました。ご協力ありがとうございます。';
-      currentForm.questions.forEach((question) => {
-        delete currentResponse[question.id];
-      });
+      submittedMessage = '回答を送信しました。内容を確認して「回答を完了する」を押してください。';
+      isAnswerSubmitted = true;
       validationErrors = {};
       draw();
+    });
+
+    root.querySelector('[data-role="complete-answer"]')?.addEventListener('click', () => {
+      isAnswerCompleted = true;
+      navigate('answer-complete', currentForm?.id || '');
     });
   };
 
@@ -686,7 +727,7 @@ export async function renderApp(service) {
     const { page, formId } = parseRoute();
     const isLoggedIn = service.isLoggedIn();
 
-    if (!isLoggedIn && page !== 'login' && page !== 'answer') {
+    if (!isLoggedIn && page !== 'login' && page !== 'answer' && page !== 'answer-complete') {
       navigate('login');
       return;
     }
@@ -696,7 +737,18 @@ export async function renderApp(service) {
       return;
     }
 
-    if (['builder', 'answer', 'results'].includes(page) && formId) {
+    if ((page === 'answer' || page === 'answer-complete') && formId !== answerSessionFormId) {
+      answerSessionFormId = formId;
+      isAnswerSubmitted = false;
+      isAnswerCompleted = false;
+      submittedMessage = '';
+      validationErrors = {};
+      Object.keys(currentResponse).forEach((questionId) => {
+        delete currentResponse[questionId];
+      });
+    }
+
+    if (['builder', 'answer', 'answer-complete', 'results'].includes(page) && formId) {
       const canUseUnsavedDraft =
         page === 'builder' &&
         currentForm &&
@@ -704,7 +756,7 @@ export async function renderApp(service) {
 
       if (!canUseUnsavedDraft) {
         try {
-          currentForm = page === 'answer'
+          currentForm = page === 'answer' || page === 'answer-complete'
             ? await service.loadPublicForm(formId)
             : await service.loadForm(formId);
         } catch {
@@ -713,7 +765,8 @@ export async function renderApp(service) {
       }
     }
 
-    const isAnswerPage = page === 'answer';
+
+    const isAnswerPage = page === 'answer' || page === 'answer-complete';
     root.innerHTML = isAnswerPage
       ? `
         <main class="app app-answer-only">
@@ -760,6 +813,15 @@ export async function renderApp(service) {
     if (page === 'answer') {
       pageContent.innerHTML = renderAnswerPage();
       bindAnswerEvents();
+      return;
+    }
+
+    if (page === 'answer-complete') {
+      if (!isAnswerCompleted) {
+        navigate('answer', formId);
+        return;
+      }
+      pageContent.innerHTML = renderAnswerCompletePage();
       return;
     }
 
