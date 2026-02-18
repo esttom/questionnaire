@@ -121,8 +121,7 @@ export async function renderApp(service) {
                   <header class="question-header">
                     <div class="question-heading">
                       <strong>Q${index + 1}</strong>
-                      <span class="type-chip">${questionTypeLabels[q.type] ?? q.type}</span>
-                      <span class="required-chip ${q.required ? 'is-required' : 'is-optional'}">${q.required ? '必須' : '任意'}</span>
+                      <span class="question-meta">${questionTypeLabels[q.type] ?? q.type} / ${q.required ? '必須' : '任意'}</span>
                     </div>
                     <button class="btn btn-danger btn-sm icon-btn" type="button" data-role="remove-question">🗑</button>
                   </header>
@@ -153,9 +152,8 @@ export async function renderApp(service) {
                           <button class="btn btn-secondary option-add-btn" type="button" data-role="add-option">＋ 選択肢追加</button>
                         </div>`
                   }
-                  <div class="question-insert-actions">
-                    <span class="insert-action-label">この下に追加</span>
-                    <button class="btn btn-ghost add-type-btn" type="button" data-role="add-after" data-qid="${q.id}">＋ 追加</button>
+                  <div class="question-insert-row">
+                    <button class="btn btn-secondary btn-sm" type="button" data-role="add-after" data-qid="${q.id}">この質問の下に質問を追加</button>
                   </div>
                 </article>`
             )
