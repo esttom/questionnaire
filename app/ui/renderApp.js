@@ -154,8 +154,8 @@ export async function renderApp(service) {
                         </div>`
                   }
                   <div class="question-insert-actions">
-                    <span class="insert-action-label">この下に質問を追加</span>
-                    <button class="btn btn-ghost add-type-btn" type="button" data-role="add-after" data-qid="${q.id}">＋ 質問を追加</button>
+                    <span class="insert-action-label">この下に追加</span>
+                    <button class="btn btn-ghost add-type-btn" type="button" data-role="add-after" data-qid="${q.id}">＋ 追加</button>
                   </div>
                 </article>`
             )
