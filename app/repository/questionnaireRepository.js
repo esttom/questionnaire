@@ -2,6 +2,9 @@
  * @interface
  */
 export class QuestionnaireRepository {
+  /** @returns {Promise<import('../domain/formModels.js').FormDefinition[]>} */
+  async getForms() {}
+
   /** @param {string} _formId */
   async getForm(_formId) {}
 

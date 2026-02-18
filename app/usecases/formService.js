@@ -1,16 +1,27 @@
 export class FormService {
   constructor(repository) {
     this.repository = repository;
-    this.questionSequence = 100;
-    this.optionSequence = 100;
+  }
+
+  loadForms() {
+    return this.repository.getForms();
   }
 
   loadForm(formId) {
     return this.repository.getForm(formId);
   }
 
-  updateForm(form) {
+  saveForm(form) {
     return this.repository.saveForm(form);
+  }
+
+  createEmptyForm() {
+    return {
+      id: this.nextEntityId('form'),
+      title: '',
+      description: '',
+      questions: []
+    };
   }
 
   submit(formId, response) {
@@ -120,30 +131,6 @@ export class FormService {
     };
   }
 
-  toConfirmationRows(form, response) {
-    return form.questions.map((question) => ({
-      id: question.id,
-      question: question.title,
-      required: question.required,
-      answer: this.toAnswerText(question, response[question.id])
-    }));
-  }
-
-  toAnswerText(question, value) {
-    if (question.type === 'multiChoice') {
-      if (!Array.isArray(value) || value.length === 0) {
-        return '（未回答）';
-      }
-      return value.join(' / ');
-    }
-
-    if (typeof value !== 'string' || value.trim() === '') {
-      return '（未回答）';
-    }
-
-    return value;
-  }
-
   updateFormMeta(form, patch) {
     return { ...form, ...patch };
   }
@@ -200,8 +187,8 @@ export class FormService {
         const normalizedOptions = (question.options || []).length
           ? question.options
           : [
-              { id: this.nextOptionId(), label: '選択肢1' },
-              { id: this.nextOptionId(), label: '選択肢2' }
+              { id: this.nextEntityId('opt'), label: '選択肢1' },
+              { id: this.nextEntityId('opt'), label: '選択肢2' }
             ];
 
         return {
@@ -221,7 +208,7 @@ export class FormService {
         const optionCount = (question.options || []).length + 1;
         return {
           ...question,
-          options: [...(question.options || []), { id: this.nextOptionId(), label: `選択肢${optionCount}` }]
+          options: [...(question.options || []), { id: this.nextEntityId('opt'), label: `選択肢${optionCount}` }]
         };
       })
     };
@@ -256,7 +243,7 @@ export class FormService {
   }
 
   createQuestion(type) {
-    const questionId = this.nextQuestionId();
+    const questionId = this.nextEntityId('q');
     const baseQuestion = {
       id: questionId,
       title: '新しい質問',
@@ -271,19 +258,17 @@ export class FormService {
     return {
       ...baseQuestion,
       options: [
-        { id: this.nextOptionId(), label: '選択肢1' },
-        { id: this.nextOptionId(), label: '選択肢2' }
+        { id: this.nextEntityId('opt'), label: '選択肢1' },
+        { id: this.nextEntityId('opt'), label: '選択肢2' }
       ]
     };
   }
 
-  nextQuestionId() {
-    this.questionSequence += 1;
-    return `q${this.questionSequence}`;
-  }
+  nextEntityId(prefix) {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return `${prefix}-${crypto.randomUUID()}`;
+    }
 
-  nextOptionId() {
-    this.optionSequence += 1;
-    return `o${this.optionSequence}`;
+    return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
   }
 }
