@@ -221,7 +221,6 @@ export async function renderApp(service) {
       <section class="panel page-panel">
         <div class="page-headline">
           <h2>フォーム回答画面</h2>
-          <button class="btn btn-secondary" type="button" data-role="back-dashboard">ダッシュボードへ戻る</button>
         </div>
         <h3>${escapeHtml(form.title || '（無題のフォーム）')}</h3>
         <p class="preview-description">${escapeHtml(form.description)}</p>
@@ -431,11 +430,6 @@ export async function renderApp(service) {
       validationErrors = {};
       draw();
     });
-
-    root.querySelector('[data-role="back-dashboard"]')?.addEventListener('click', () => {
-      submittedMessage = '';
-      navigate('dashboard');
-    });
   };
 
   const bindDashboardEvents = () => {
@@ -476,23 +470,37 @@ export async function renderApp(service) {
   const draw = async () => {
     const { page, formId } = parseRoute();
     if (['builder', 'answer', 'results'].includes(page) && formId) {
-      try {
-        currentForm = await service.loadForm(formId);
-      } catch {
-        currentForm = null;
+      const canUseUnsavedDraft =
+        page === 'builder' &&
+        currentForm &&
+        currentForm.id === formId;
+
+      if (!canUseUnsavedDraft) {
+        try {
+          currentForm = await service.loadForm(formId);
+        } catch {
+          currentForm = null;
+        }
       }
     }
 
-    root.innerHTML = `
-      <main class="app">
-        <header class="hero">
-          <p class="eyebrow">アンケートフォーム</p>
-          <h1>アンケート管理システム</h1>
-          <p class="lead">管理者向けにフォームの作成・編集・集計、回答者向けに入力・送信を提供します。</p>
-        </header>
-        <div class="page-shell" id="pageContent"></div>
-      </main>
-    `;
+    const isAnswerPage = page === 'answer';
+    root.innerHTML = isAnswerPage
+      ? `
+        <main class="app app-answer-only">
+          <div class="page-shell" id="pageContent"></div>
+        </main>
+      `
+      : `
+        <main class="app">
+          <header class="hero">
+            <p class="eyebrow">アンケートフォーム</p>
+            <h1>アンケート管理システム</h1>
+            <p class="lead">管理者向けにフォームの作成・編集・集計、回答者向けに入力・送信を提供します。</p>
+          </header>
+          <div class="page-shell" id="pageContent"></div>
+        </main>
+      `;
 
     const pageContent = root.querySelector('#pageContent');
 
