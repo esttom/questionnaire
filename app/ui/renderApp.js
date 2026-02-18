@@ -12,7 +12,6 @@ export async function renderApp(service) {
   let dashboardQuery = '';
   let dashboardStatusFilter = 'all';
   let formSaveState = 'saved';
-  let isAnswerSubmitted = false;
   let isAnswerCompleted = false;
   let answerSessionFormId = '';
   const authStorageKey = 'questionnaire-auth-v1';
@@ -252,7 +251,10 @@ export async function renderApp(service) {
             .join('')}
           ${
             form.questions.length === 0
-              ? '<p class="preview-description">質問がありません。カード内の「質問を追加」ボタンから追加してください。</p>'
+              ? `<div class="empty-question-state">
+                  <p class="preview-description">質問がありません。最初の質問を追加してください。</p>
+                  <button class="btn btn-secondary" type="button" data-role="add-first-question">＋ 質問を追加</button>
+                </div>`
               : ''
           }
         </div>`
@@ -261,7 +263,7 @@ export async function renderApp(service) {
         }
         <div class="flow-actions builder-footer-actions">
           <button class="btn btn-secondary" type="button" data-role="save-draft">下書き保存</button>
-          <button class="btn btn-primary" type="button" data-role="publish-form" ${builderActiveTab !== 'preview' ? 'disabled' : ''}>公開する</button>
+          <button class="btn btn-primary" type="button" data-role="publish-form">公開する</button>
         </div>
         <p id="submitted">${escapeHtml(editorMessage)}</p>
       </section>
@@ -309,26 +311,6 @@ export async function renderApp(service) {
 
     const answeredCount = form.questions.filter((question) => isQuestionAnswered(question, currentResponse[question.id])).length;
     const progress = form.questions.length === 0 ? 0 : Math.round((answeredCount / form.questions.length) * 100);
-
-    if (isAnswerSubmitted) {
-      return `
-        <section class="panel page-panel">
-          <div class="page-headline">
-            <h2>回答内容の確認</h2>
-          </div>
-          <h3>${escapeHtml(form.title || '（無題のフォーム）')}</h3>
-          <p class="preview-description">回答は送信済みです。内容を確認の上、回答終了へ進んでください。</p>
-          <div class="answer-progress" aria-live="polite">
-            <p class="preview-meta">回答進捗: ${answeredCount} / ${form.questions.length}</p>
-            <div class="answer-progress-track"><div class="answer-progress-fill" style="width:${progress}%"></div></div>
-          </div>
-          <div class="flow-actions">
-            <button class="btn btn-primary" type="button" data-role="complete-answer">回答を完了する</button>
-          </div>
-          <p id="submitted">${escapeHtml(submittedMessage)}</p>
-        </section>
-      `;
-    }
 
     return `
       <section class="panel page-panel">
@@ -564,6 +546,14 @@ export async function renderApp(service) {
       });
     });
 
+    editorEl.querySelector('[data-role="add-first-question"]')?.addEventListener('click', () => {
+      currentForm = service.addQuestion(currentForm);
+      editorMessage = '';
+      builderErrors = [];
+      formSaveState = 'unsaved';
+      draw();
+    });
+
     editorEl.querySelectorAll('[data-role="add-after"]').forEach((buttonEl) => {
       buttonEl.addEventListener('click', () => {
         currentForm = service.insertQuestionAfter(currentForm, buttonEl.dataset.qid);
@@ -655,13 +645,9 @@ export async function renderApp(service) {
       }
 
       await service.submit(currentForm.id, currentResponse);
-      submittedMessage = '回答を送信しました。内容を確認して「回答を完了する」を押してください。';
-      isAnswerSubmitted = true;
+      submittedMessage = '回答を送信しました。ありがとうございました。';
       validationErrors = {};
-      draw();
-    });
-
-    root.querySelector('[data-role="complete-answer"]')?.addEventListener('click', () => {
+      window.alert('回答を送信しました。ご協力ありがとうございました。');
       isAnswerCompleted = true;
       navigate('answer-complete', currentForm?.id || '');
     });
@@ -739,7 +725,6 @@ export async function renderApp(service) {
 
     if ((page === 'answer' || page === 'answer-complete') && formId !== answerSessionFormId) {
       answerSessionFormId = formId;
-      isAnswerSubmitted = false;
       isAnswerCompleted = false;
       submittedMessage = '';
       validationErrors = {};
