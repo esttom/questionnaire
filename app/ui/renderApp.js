@@ -7,6 +7,7 @@ export async function renderApp(service) {
   let validationErrors = {};
   let submittedMessage = '';
   let editorMessage = '';
+  let builderActiveTab = 'edit';
 
   const questionTypeLabels = {
     singleChoice: '単一選択',
@@ -102,6 +103,16 @@ export async function renderApp(service) {
     const form = currentForm;
     if (!form) return '<section class="panel page-panel"><p>フォームが見つかりません。</p></section>';
 
+    const renderBuilderPreview = () => `
+      <section class="builder-preview" aria-label="プレビュー">
+        <h3>${escapeHtml(form.title || '（無題のフォーム）')}</h3>
+        <p class="preview-description">${escapeHtml(form.description)}</p>
+        <div id="answerForm" autocomplete="off">
+          ${form.questions.map(renderAnswerQuestion).join('')}
+        </div>
+      </section>
+    `;
+
     return `
       <section class="panel page-panel" id="editor">
         <div class="page-headline">
@@ -111,7 +122,13 @@ export async function renderApp(service) {
             <button class="btn btn-primary" type="button" data-role="save-form">保存</button>
           </div>
         </div>
-        <label class="field-block">タイトル<input id="titleInput" value="${escapeHtml(form.title)}" /></label>
+        <div class="builder-tablist" role="tablist" aria-label="編集画面タブ">
+          <button class="builder-tab ${builderActiveTab === 'edit' ? 'is-active' : ''}" type="button" role="tab" aria-selected="${builderActiveTab === 'edit'}" data-role="builder-tab" data-tab="edit">編集</button>
+          <button class="builder-tab ${builderActiveTab === 'preview' ? 'is-active' : ''}" type="button" role="tab" aria-selected="${builderActiveTab === 'preview'}" data-role="builder-tab" data-tab="preview">プレビュー</button>
+        </div>
+        ${
+          builderActiveTab === 'edit'
+            ? `<label class="field-block">タイトル<input id="titleInput" value="${escapeHtml(form.title)}" /></label>
         <label class="field-block">説明<textarea id="descriptionInput" rows="3">${escapeHtml(form.description)}</textarea></label>
         <div class="question-list">
           ${form.questions
@@ -153,7 +170,7 @@ export async function renderApp(service) {
                         </div>`
                   }
                   <div class="question-insert-row">
-                    <button class="btn btn-secondary btn-sm" type="button" data-role="add-after" data-qid="${q.id}">この質問の下に質問を追加</button>
+                    <button class="btn btn-secondary btn-sm question-insert-btn" type="button" data-role="add-after" data-qid="${q.id}">質問を追加</button>
                   </div>
                 </article>`
             )
@@ -166,7 +183,9 @@ export async function renderApp(service) {
         </div>
         <div class="flow-actions">
           <button class="btn btn-ghost" type="button" data-role="add-new-question">＋ 質問を追加</button>
-        </div>
+        </div>`
+            : renderBuilderPreview()
+        }
         <p id="submitted">${escapeHtml(editorMessage)}</p>
       </section>
     `;
@@ -283,6 +302,26 @@ export async function renderApp(service) {
   const bindBuilderEvents = () => {
     if (!currentForm) return;
     const editorEl = root.querySelector('#editor');
+
+    editorEl.querySelectorAll('[data-role="builder-tab"]').forEach((buttonEl) => {
+      buttonEl.addEventListener('click', () => {
+        builderActiveTab = buttonEl.dataset.tab;
+        draw();
+      });
+    });
+
+    if (builderActiveTab !== 'edit') {
+      editorEl.querySelector('[data-role="back-dashboard"]').addEventListener('click', () => {
+        editorMessage = '';
+        navigate('dashboard');
+      });
+      editorEl.querySelector('[data-role="save-form"]').addEventListener('click', async () => {
+        await service.saveForm(currentForm);
+        editorMessage = 'フォームを保存しました。';
+        draw();
+      });
+      return;
+    }
 
     editorEl.querySelector('#titleInput').addEventListener('input', (event) => {
       currentForm = service.updateFormMeta(currentForm, { title: event.target.value });

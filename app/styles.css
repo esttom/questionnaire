@@ -271,6 +271,47 @@ input[type='radio'] {
   border-color: #f7cad8;
 }
 
+
+.builder-tablist {
+  margin-top: var(--space-3);
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  border-bottom: 1px solid #d8def8;
+}
+
+.builder-tab {
+  appearance: none;
+  border: 1px solid transparent;
+  border-bottom: 0;
+  background: transparent;
+  color: #616f98;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  padding: 9px 16px;
+  border-radius: 12px 12px 0 0;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.builder-tab:hover {
+  background: #f3f6ff;
+  color: #46548a;
+}
+
+.builder-tab.is-active {
+  background: #ffffff;
+  color: #3f46c3;
+  border-color: #d8def8;
+  position: relative;
+  top: 1px;
+}
+
+.builder-preview {
+  margin-top: var(--space-3);
+}
+
 .question-list {
   margin-top: var(--space-2);
 }
@@ -303,6 +344,12 @@ input[type='radio'] {
   margin-top: var(--space-3);
   padding-top: var(--space-2);
   border-top: 1px solid #e8ecfb;
+  display: flex;
+  justify-content: center;
+}
+
+.question-insert-btn {
+  min-width: 152px;
 }
 
 .answer-card {
