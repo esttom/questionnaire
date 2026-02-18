@@ -128,7 +128,6 @@ export async function renderApp(service) {
                   </header>
                   <label class="field-block">質問文<input data-role="question-title" value="${escapeHtml(q.title)}" /></label>
                   <div class="question-config-panel">
-                    <label class="inline-check compact-check"><input data-role="question-required" type="checkbox" ${q.required ? 'checked' : ''} /><span>必須回答</span></label>
                     <label class="inline-config-field subtle-type-field">
                       <span>種別変更</span>
                       <select data-role="question-type">
@@ -137,6 +136,7 @@ export async function renderApp(service) {
                         <option value="text" ${q.type === 'text' ? 'selected' : ''}>自由記述</option>
                       </select>
                     </label>
+                    <label class="inline-check compact-check"><input data-role="question-required" type="checkbox" ${q.required ? 'checked' : ''} /><span>必須回答</span></label>
                   </div>
                   ${
                     q.type === 'text'
@@ -155,9 +155,7 @@ export async function renderApp(service) {
                   }
                   <div class="question-insert-actions">
                     <span class="insert-action-label">この下に質問を追加</span>
-                    <button class="btn btn-ghost add-type-btn" type="button" data-role="add-after" data-qid="${q.id}" data-qtype="singleChoice">単一</button>
-                    <button class="btn btn-ghost add-type-btn" type="button" data-role="add-after" data-qid="${q.id}" data-qtype="multiChoice">複数</button>
-                    <button class="btn btn-ghost add-type-btn" type="button" data-role="add-after" data-qid="${q.id}" data-qtype="text">記述</button>
+                    <button class="btn btn-ghost add-type-btn" type="button" data-role="add-after" data-qid="${q.id}">＋ 質問を追加</button>
                   </div>
                 </article>`
             )
@@ -169,9 +167,7 @@ export async function renderApp(service) {
           }
         </div>
         <div class="flow-actions">
-          <button class="btn btn-ghost" type="button" data-role="add-new-question" data-qtype="singleChoice">＋ 単一選択を追加</button>
-          <button class="btn btn-ghost" type="button" data-role="add-new-question" data-qtype="multiChoice">＋ 複数選択を追加</button>
-          <button class="btn btn-ghost" type="button" data-role="add-new-question" data-qtype="text">＋ 自由記述を追加</button>
+          <button class="btn btn-ghost" type="button" data-role="add-new-question">＋ 質問を追加</button>
         </div>
         <p id="submitted">${escapeHtml(editorMessage)}</p>
       </section>
@@ -293,13 +289,11 @@ export async function renderApp(service) {
     editorEl.querySelector('#titleInput').addEventListener('input', (event) => {
       currentForm = service.updateFormMeta(currentForm, { title: event.target.value });
       editorMessage = '';
-      draw();
     });
 
     editorEl.querySelector('#descriptionInput').addEventListener('input', (event) => {
       currentForm = service.updateFormMeta(currentForm, { description: event.target.value });
       editorMessage = '';
-      draw();
     });
 
     editorEl.querySelectorAll('.question-card').forEach((questionEl) => {
@@ -308,7 +302,6 @@ export async function renderApp(service) {
       questionEl.querySelector('[data-role="question-title"]').addEventListener('input', (event) => {
         currentForm = service.updateQuestion(currentForm, qid, { title: event.target.value });
         editorMessage = '';
-        draw();
       });
 
       questionEl.querySelector('[data-role="question-required"]').addEventListener('change', (event) => {
@@ -345,7 +338,6 @@ export async function renderApp(service) {
         optionEl.querySelector('[data-role="option-label"]').addEventListener('input', (event) => {
           currentForm = service.updateOption(currentForm, qid, oid, event.target.value);
           editorMessage = '';
-          draw();
         });
 
         optionEl.querySelector('[data-role="remove-option"]').addEventListener('click', () => {
@@ -358,7 +350,7 @@ export async function renderApp(service) {
 
     editorEl.querySelectorAll('[data-role="add-after"]').forEach((buttonEl) => {
       buttonEl.addEventListener('click', () => {
-        currentForm = service.insertQuestionAfter(currentForm, buttonEl.dataset.qid, buttonEl.dataset.qtype);
+        currentForm = service.insertQuestionAfter(currentForm, buttonEl.dataset.qid);
         editorMessage = '';
         draw();
       });
@@ -366,7 +358,7 @@ export async function renderApp(service) {
 
     editorEl.querySelectorAll('[data-role="add-new-question"]').forEach((buttonEl) => {
       buttonEl.addEventListener('click', () => {
-        currentForm = service.addQuestion(currentForm, buttonEl.dataset.qtype);
+        currentForm = service.addQuestion(currentForm);
         editorMessage = '';
         draw();
       });

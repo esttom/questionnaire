@@ -17,7 +17,7 @@ export class FormService {
 
   createEmptyForm() {
     return {
-      id: this.nextEntityId('form'),
+      id: this.nextFormId(),
       title: '',
       description: '',
       questions: []
@@ -135,14 +135,14 @@ export class FormService {
     return { ...form, ...patch };
   }
 
-  addQuestion(form, type) {
+  addQuestion(form, type = 'singleChoice') {
     return {
       ...form,
       questions: [...form.questions, this.createQuestion(type)]
     };
   }
 
-  insertQuestionAfter(form, afterQuestionId, type) {
+  insertQuestionAfter(form, afterQuestionId, type = 'singleChoice') {
     const insertIndex = form.questions.findIndex((question) => question.id === afterQuestionId);
     if (insertIndex < 0) {
       return this.addQuestion(form, type);
@@ -270,5 +270,9 @@ export class FormService {
     }
 
     return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  }
+
+  nextFormId() {
+    return `form-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
   }
 }
