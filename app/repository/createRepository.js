@@ -6,6 +6,7 @@ const seedForms = [
     ownerId: 'demo-admin',
     title: '顧客満足度アンケート',
     description: 'ご利用体験の評価と改善要望を収集します。',
+    status: 'published',
     questions: [
       {
         id: 'q1',

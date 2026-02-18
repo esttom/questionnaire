@@ -7,13 +7,31 @@ export class InMemoryQuestionnaireRepository extends QuestionnaireRepository {
     super();
     this.storageKey = 'questionnaire-storage-v2';
     const persisted = this.loadPersistedData();
-    const initialForms = persisted?.forms ?? seedForms;
+    const initialForms = this.normalizeForms(persisted?.forms ?? seedForms);
     const initialResponses = persisted?.responsesByForm ?? seedForms.map((form) => [form.id, []]);
 
     this.forms = new Map(initialForms.map((form) => [form.id, structuredClone(form)]));
     this.responsesByForm = new Map(initialResponses.map(([formId, responses]) => [formId, structuredClone(responses)]));
 
     this.persist();
+  }
+
+
+  normalizeForm(form) {
+    const hasTitle = String(form.title || '').trim() !== '';
+    const hasQuestions = Array.isArray(form.questions) && form.questions.length > 0;
+    const hasInvalidChoiceQuestion = (form.questions || []).some(
+      (question) =>
+        question.type !== 'text' &&
+        ((question.options || []).filter((option) => String(option.label || '').trim() !== '').length < 2)
+    );
+
+    const normalizedStatus = form.status || (!hasTitle || !hasQuestions || hasInvalidChoiceQuestion ? 'draft' : 'published');
+    return { ...form, status: normalizedStatus };
+  }
+
+  normalizeForms(forms) {
+    return forms.map((form) => this.normalizeForm(form));
   }
 
   loadPersistedData() {
@@ -69,7 +87,7 @@ export class InMemoryQuestionnaireRepository extends QuestionnaireRepository {
 
   async getPublicForm(formId) {
     const form = this.forms.get(formId);
-    if (!form) throw new Error('Form not found');
+    if (!form || form.status !== 'published') throw new Error('Form not found');
     return structuredClone(form);
   }
 
@@ -78,7 +96,7 @@ export class InMemoryQuestionnaireRepository extends QuestionnaireRepository {
       throw new Error('Forbidden');
     }
 
-    this.forms.set(form.id, structuredClone(form));
+    this.forms.set(form.id, structuredClone(this.normalizeForm(form)));
     if (!this.responsesByForm.has(form.id)) {
       this.responsesByForm.set(form.id, []);
     }
@@ -86,7 +104,8 @@ export class InMemoryQuestionnaireRepository extends QuestionnaireRepository {
   }
 
   async submitResponse(formId, response) {
-    if (!this.forms.has(formId)) throw new Error('Form not found');
+    const form = this.forms.get(formId);
+    if (!form || form.status !== 'published') throw new Error('Form not found');
     const responses = this.responsesByForm.get(formId) || [];
     responses.push(structuredClone(response));
     this.responsesByForm.set(formId, responses);
@@ -95,7 +114,7 @@ export class InMemoryQuestionnaireRepository extends QuestionnaireRepository {
 
   async getResponses(userId, formId) {
     const form = this.forms.get(formId);
-    if (!form || form.ownerId !== userId) throw new Error('Form not found');
+    if (!form || form.ownerId !== userId || form.status !== 'published') throw new Error('Form not found');
     return structuredClone(this.responsesByForm.get(formId) || []);
   }
 }
