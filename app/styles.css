@@ -31,6 +31,11 @@ body {
   padding: 40px var(--space-5) 56px;
 }
 
+.app.app-answer-only {
+  max-width: 860px;
+  padding-top: 48px;
+}
+
 .hero {
   margin-bottom: var(--space-4);
   padding: var(--space-4) var(--space-5);
