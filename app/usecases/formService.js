@@ -1,23 +1,51 @@
 export class FormService {
   constructor(repository) {
     this.repository = repository;
+    this.currentUserId = '';
+  }
+
+  login(userId) {
+    const normalized = String(userId || '').trim();
+    if (!normalized) {
+      throw new Error('ユーザーIDを入力してください。');
+    }
+
+    this.currentUserId = normalized;
+    return this.currentUserId;
+  }
+
+  logout() {
+    this.currentUserId = '';
+  }
+
+  isLoggedIn() {
+    return this.currentUserId !== '';
+  }
+
+  getCurrentUserId() {
+    return this.currentUserId;
   }
 
   loadForms() {
-    return this.repository.getForms();
+    return this.repository.getForms(this.requireUserId());
   }
 
   loadForm(formId) {
-    return this.repository.getForm(formId);
+    return this.repository.getForm(this.requireUserId(), formId);
+  }
+
+  loadPublicForm(formId) {
+    return this.repository.getPublicForm(formId);
   }
 
   saveForm(form) {
-    return this.repository.saveForm(form);
+    return this.repository.saveForm(this.requireUserId(), form);
   }
 
   createEmptyForm() {
     return {
       id: this.nextFormId(),
+      ownerId: this.requireUserId(),
       title: '',
       description: '',
       questions: []
@@ -29,7 +57,7 @@ export class FormService {
   }
 
   loadResponses(formId) {
-    return this.repository.getResponses(formId);
+    return this.repository.getResponses(this.requireUserId(), formId);
   }
 
   summarizeResponses(form, responses) {
@@ -274,5 +302,12 @@ export class FormService {
 
   nextFormId() {
     return `form-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+  }
+
+  requireUserId() {
+    if (!this.currentUserId) {
+      throw new Error('ログインが必要です。');
+    }
+    return this.currentUserId;
   }
 }

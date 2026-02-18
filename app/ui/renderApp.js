@@ -8,6 +8,7 @@ export async function renderApp(service) {
   let submittedMessage = '';
   let editorMessage = '';
   let builderActiveTab = 'edit';
+  const authStorageKey = 'questionnaire-auth-v1';
 
   const questionTypeLabels = {
     singleChoice: '単一選択',
@@ -25,9 +26,9 @@ export async function renderApp(service) {
 
   const parseRoute = () => {
     const clean = window.location.hash.replace(/^#\/?/, '');
-    const [page = 'dashboard', formId = ''] = clean.split('/');
-    if (!['dashboard', 'builder', 'answer', 'results'].includes(page)) {
-      return { page: 'dashboard', formId: '' };
+    const [page = 'login', formId = ''] = clean.split('/');
+    if (!['login', 'dashboard', 'builder', 'answer', 'results'].includes(page)) {
+      return { page: 'login', formId: '' };
     }
     return { page, formId };
   };
@@ -55,6 +56,22 @@ export async function renderApp(service) {
       return '回答URLのコピーに失敗しました。';
     }
   };
+
+  const renderLoginPage = () => `
+    <section class="panel page-panel">
+      <div class="page-headline">
+        <h2>ログイン</h2>
+      </div>
+      <p class="preview-description">フォーム管理機能を利用するにはログインしてください。回答画面はログイン不要で利用できます。</p>
+      <form id="loginForm" class="field-stack" autocomplete="off">
+        <label class="field-block">ユーザーID<input id="loginUserId" placeholder="例: team-a-admin" required /></label>
+        <div class="row-actions">
+          <button class="btn btn-primary" type="submit">ログイン</button>
+        </div>
+      </form>
+      ${editorMessage ? `<p class="dashboard-message">${escapeHtml(editorMessage)}</p>` : ''}
+    </section>
+  `;
 
   const renderDashboardPage = async () => {
     const forms = await service.loadForms();
@@ -413,6 +430,22 @@ export async function renderApp(service) {
     });
   };
 
+  const bindLoginEvents = () => {
+    root.querySelector('#loginForm')?.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const userIdInput = root.querySelector('#loginUserId');
+      try {
+        const userId = service.login(userIdInput.value);
+        localStorage.setItem(authStorageKey, userId);
+        editorMessage = '';
+        navigate('dashboard');
+      } catch (error) {
+        editorMessage = error instanceof Error ? error.message : 'ログインに失敗しました。';
+        draw();
+      }
+    });
+  };
+
   const bindAnswerEvents = () => {
     root.querySelectorAll('textarea[data-qid]').forEach((el) => {
       el.addEventListener('input', (event) => {
@@ -496,8 +529,30 @@ export async function renderApp(service) {
     });
   };
 
+  const bindCommonEvents = () => {
+    root.querySelector('[data-role="logout"]')?.addEventListener('click', () => {
+      service.logout();
+      localStorage.removeItem(authStorageKey);
+      currentForm = null;
+      editorMessage = '';
+      navigate('login');
+    });
+  };
+
   const draw = async () => {
     const { page, formId } = parseRoute();
+    const isLoggedIn = service.isLoggedIn();
+
+    if (!isLoggedIn && page !== 'login' && page !== 'answer') {
+      navigate('login');
+      return;
+    }
+
+    if (isLoggedIn && page === 'login') {
+      navigate('dashboard');
+      return;
+    }
+
     if (['builder', 'answer', 'results'].includes(page) && formId) {
       const canUseUnsavedDraft =
         page === 'builder' &&
@@ -506,7 +561,9 @@ export async function renderApp(service) {
 
       if (!canUseUnsavedDraft) {
         try {
-          currentForm = await service.loadForm(formId);
+          currentForm = page === 'answer'
+            ? await service.loadPublicForm(formId)
+            : await service.loadForm(formId);
         } catch {
           currentForm = null;
         }
@@ -523,9 +580,13 @@ export async function renderApp(service) {
       : `
         <main class="app">
           <header class="hero">
-            <p class="eyebrow">アンケートフォーム</p>
+            <div class="hero-topline">
+              <p class="eyebrow">アンケートフォーム</p>
+              ${isLoggedIn ? `<button class="btn btn-ghost" type="button" data-role="logout">ログアウト</button>` : ''}
+            </div>
             <h1>アンケート管理システム</h1>
             <p class="lead">管理者向けにフォームの作成・編集・集計、回答者向けに入力・送信を提供します。</p>
+            ${isLoggedIn ? `<p class="preview-description">ログイン中: ${escapeHtml(service.getCurrentUserId())}</p>` : ''}
           </header>
           <div class="page-shell" id="pageContent"></div>
         </main>
@@ -533,14 +594,22 @@ export async function renderApp(service) {
 
     const pageContent = root.querySelector('#pageContent');
 
+    if (page === 'login') {
+      pageContent.innerHTML = renderLoginPage();
+      bindLoginEvents();
+      return;
+    }
+
     if (page === 'dashboard') {
       pageContent.innerHTML = `${await renderDashboardPage()}${editorMessage ? `<p class="dashboard-message">${escapeHtml(editorMessage)}</p>` : ''}`;
+      bindCommonEvents();
       bindDashboardEvents();
       return;
     }
 
     if (page === 'builder') {
       pageContent.innerHTML = renderBuilderPage();
+      bindCommonEvents();
       bindBuilderEvents();
       return;
     }
@@ -553,13 +622,23 @@ export async function renderApp(service) {
 
     if (page === 'results') {
       pageContent.innerHTML = await renderResultsPage();
+      bindCommonEvents();
       bindResultsEvents();
     }
   };
 
   window.addEventListener('hashchange', draw);
+  const storedUserId = localStorage.getItem(authStorageKey);
+  if (storedUserId) {
+    try {
+      service.login(storedUserId);
+    } catch {
+      localStorage.removeItem(authStorageKey);
+    }
+  }
+
   if (!window.location.hash) {
-    window.location.hash = '#/dashboard';
+    window.location.hash = '#/login';
   }
   draw();
 }
