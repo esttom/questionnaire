@@ -1,20 +1,20 @@
-# Questionnaire UI Prototype
+# Questionnaire UI
 
-Googleフォーム風のアンケート作成・回答・集計が可能なUIです。
+アンケートの作成・回答・集計を行う画面を、責務分離された構成で提供するWebアプリケーションです。
 
-## GitHub Pages で公開する方法
+## 画面構成
 
-このリポジトリには `.github/workflows/deploy-pages.yml` を同梱しています。`main` / `master` ブランチへ push すると自動で GitHub Pages にデプロイされます。
-
-1. GitHub の **Settings > Pages** を開く
-2. **Build and deployment** の Source を **GitHub Actions** に設定する
-3. `main` または `master` ブランチへ push する
-4. Actions の `Deploy static site to GitHub Pages` が成功したら公開URLで閲覧する
-
-公開URLの例:
-
-- User/Org Pages: `https://<user>.github.io/`
-- Project Pages: `https://<user>.github.io/<repository>/`
+- ダッシュボード画面
+  - 作成済みフォーム一覧
+  - フォーム編集/回答/集計への導線
+  - 新規フォーム作成
+- フォーム作成・編集画面
+  - 新規作成時は空のフォームを表示
+  - 編集時は既存フォームを読み込み
+- フォーム回答画面
+  - フォームIDで一意に管理された公開回答画面
+- 集計結果画面
+  - 指定フォームの回答件数・選択分布・自由記述の確認
 
 ## ローカル確認
 
