@@ -8,6 +8,9 @@ export async function renderApp(service) {
   let submittedMessage = '';
   let editorMessage = '';
   let builderActiveTab = 'edit';
+  let dashboardQuery = '';
+  let dashboardStatusFilter = 'all';
+  let formSaveState = 'saved';
   const authStorageKey = 'questionnaire-auth-v1';
 
   const questionTypeLabels = {
@@ -53,8 +56,52 @@ export async function renderApp(service) {
       await navigator.clipboard.writeText(answerUrl);
       return '回答URLをコピーしました。';
     } catch {
-      return '回答URLのコピーに失敗しました。';
+      return `回答URLのコピーに失敗しました。手動でコピーしてください: ${answerUrl}`;
     }
+  };
+
+  const classifyFormStatus = (form) => {
+    const hasTitle = String(form.title || '').trim() !== '';
+    const hasQuestions = Array.isArray(form.questions) && form.questions.length > 0;
+    const hasInvalidChoiceQuestion = (form.questions || []).some(
+      (question) =>
+        question.type !== 'text' &&
+        ((question.options || []).filter((option) => String(option.label || '').trim() !== '').length < 2)
+    );
+
+    if (!hasTitle || !hasQuestions || hasInvalidChoiceQuestion) {
+      return 'draft';
+    }
+
+    return 'published';
+  };
+
+  const getBuilderWarnings = (form) => {
+    const warnings = [];
+    if (!String(form.title || '').trim()) warnings.push('タイトルが未入力です。');
+    if (!Array.isArray(form.questions) || form.questions.length === 0) warnings.push('質問を1件以上追加してください。');
+
+    (form.questions || []).forEach((question, index) => {
+      if (!String(question.title || '').trim()) {
+        warnings.push(`Q${index + 1} の質問文が未入力です。`);
+      }
+      if (question.type !== 'text') {
+        const filledOptions = (question.options || []).filter((option) => String(option.label || '').trim() !== '').length;
+        if (filledOptions < 2) warnings.push(`Q${index + 1} は選択肢を2件以上設定してください。`);
+      }
+    });
+
+    return warnings;
+  };
+
+  const isQuestionAnswered = (question, value) => {
+    if (question.type === 'text') {
+      return typeof value === 'string' && value.trim() !== '';
+    }
+    if (question.type === 'singleChoice') {
+      return typeof value === 'string' && value !== '';
+    }
+    return Array.isArray(value) && value.length > 0;
   };
 
   const renderLoginPage = () => `
@@ -75,22 +122,39 @@ export async function renderApp(service) {
 
   const renderDashboardPage = async () => {
     const forms = await service.loadForms();
+    const filteredForms = forms.filter((form) => {
+      const queryMatched = String(form.title || '（無題のフォーム）').toLowerCase().includes(dashboardQuery.toLowerCase().trim());
+      const status = classifyFormStatus(form);
+      const statusMatched = dashboardStatusFilter === 'all' || dashboardStatusFilter === status;
+      return queryMatched && statusMatched;
+    });
+
     return `
       <section class="panel page-panel">
         <div class="dashboard-head">
           <div>
             <h2>ダッシュボード</h2>
             <p class="preview-description">作成済みフォームの管理と回答受付を行います。</p>
+            <div class="dashboard-filters">
+              <label class="dashboard-filter-field">フォーム検索<input type="search" data-role="dashboard-query" value="${escapeHtml(dashboardQuery)}" placeholder="フォーム名で検索" /></label>
+              <label class="dashboard-filter-field">表示状態
+                <select data-role="dashboard-status-filter">
+                  <option value="all" ${dashboardStatusFilter === 'all' ? 'selected' : ''}>すべて</option>
+                  <option value="published" ${dashboardStatusFilter === 'published' ? 'selected' : ''}>公開可能</option>
+                  <option value="draft" ${dashboardStatusFilter === 'draft' ? 'selected' : ''}>下書き</option>
+                </select>
+              </label>
+            </div>
           </div>
-          <button class="btn btn-primary" type="button" data-role="create-form">＋ 新規フォーム作成</button>
+          <button class="btn btn-primary dashboard-create-btn" type="button" data-role="create-form">＋ 新規フォーム作成</button>
         </div>
         <div class="form-list">
-          ${forms.length
-            ? forms
+          ${filteredForms.length
+            ? filteredForms
                 .map(
                   (form) => `
                     <article class="form-list-card">
-                      <h3>${escapeHtml(form.title || '（無題のフォーム）')}</h3>
+                      <h3>${escapeHtml(form.title || '（無題のフォーム）')} <span class="status-chip status-chip-${classifyFormStatus(form)}">${classifyFormStatus(form) === 'published' ? '公開可能' : '下書き'}</span></h3>
                       <p class="preview-description">質問数: ${form.questions.length}</p>
                       <div class="action-group">
                         <p class="action-group-title">管理</p>
@@ -110,7 +174,7 @@ export async function renderApp(service) {
                   `
                 )
                 .join('')
-            : '<p class="preview-description">フォームがありません。新規フォームを作成してください。</p>'}
+            : '<p class="preview-description">条件に一致するフォームがありません。検索条件を変更してください。</p>'}
         </div>
       </section>
     `;
@@ -135,6 +199,8 @@ export async function renderApp(service) {
         <div class="page-headline">
           <h2>フォーム作成・編集</h2>
           <div class="row-actions">
+            <p class="save-state save-state-${formSaveState}">${formSaveState === 'saved' ? '保存済み' : formSaveState === 'error' ? '保存エラー' : '未保存'}</p>
+            <button class="btn btn-ghost" type="button" data-role="check-form">公開前チェック</button>
             <button class="btn btn-secondary" type="button" data-role="back-dashboard">ダッシュボードへ戻る</button>
             <button class="btn btn-primary" type="button" data-role="save-form">保存</button>
           </div>
@@ -247,6 +313,9 @@ export async function renderApp(service) {
     const form = currentForm;
     if (!form) return '<section class="panel page-panel"><p>フォームが見つかりません。</p></section>';
 
+    const answeredCount = form.questions.filter((question) => isQuestionAnswered(question, currentResponse[question.id])).length;
+    const progress = form.questions.length === 0 ? 0 : Math.round((answeredCount / form.questions.length) * 100);
+
     return `
       <section class="panel page-panel">
         <div class="page-headline">
@@ -254,6 +323,10 @@ export async function renderApp(service) {
         </div>
         <h3>${escapeHtml(form.title || '（無題のフォーム）')}</h3>
         <p class="preview-description">${escapeHtml(form.description)}</p>
+        <div class="answer-progress" aria-live="polite">
+          <p class="preview-meta">回答進捗: ${answeredCount} / ${form.questions.length}</p>
+          <div class="answer-progress-track"><div class="answer-progress-fill" style="width:${progress}%"></div></div>
+        </div>
         <form id="answerForm" autocomplete="off">
           ${form.questions.map(renderAnswerQuestion).join('')}
           <div class="flow-actions">
@@ -328,13 +401,24 @@ export async function renderApp(service) {
     });
 
     if (builderActiveTab !== 'edit') {
+      editorEl.querySelector('[data-role="check-form"]').addEventListener('click', () => {
+        const warnings = getBuilderWarnings(currentForm);
+        editorMessage = warnings.length ? `公開前チェック: ${warnings.join(' ')}` : '公開前チェック: 問題は見つかりませんでした。';
+        draw();
+      });
       editorEl.querySelector('[data-role="back-dashboard"]').addEventListener('click', () => {
         editorMessage = '';
         navigate('dashboard');
       });
       editorEl.querySelector('[data-role="save-form"]').addEventListener('click', async () => {
-        await service.saveForm(currentForm);
-        editorMessage = 'フォームを保存しました。';
+        try {
+          await service.saveForm(currentForm);
+          editorMessage = 'フォームを保存しました。';
+          formSaveState = 'saved';
+        } catch {
+          editorMessage = 'フォームの保存に失敗しました。';
+          formSaveState = 'error';
+        }
         draw();
       });
       return;
@@ -343,11 +427,13 @@ export async function renderApp(service) {
     editorEl.querySelector('#titleInput').addEventListener('input', (event) => {
       currentForm = service.updateFormMeta(currentForm, { title: event.target.value });
       editorMessage = '';
+      formSaveState = 'unsaved';
     });
 
     editorEl.querySelector('#descriptionInput').addEventListener('input', (event) => {
       currentForm = service.updateFormMeta(currentForm, { description: event.target.value });
       editorMessage = '';
+      formSaveState = 'unsaved';
     });
 
     editorEl.querySelectorAll('.question-card').forEach((questionEl) => {
@@ -356,11 +442,13 @@ export async function renderApp(service) {
       questionEl.querySelector('[data-role="question-title"]').addEventListener('input', (event) => {
         currentForm = service.updateQuestion(currentForm, qid, { title: event.target.value });
         editorMessage = '';
+        formSaveState = 'unsaved';
       });
 
       questionEl.querySelector('[data-role="question-required"]').addEventListener('change', (event) => {
         currentForm = service.updateQuestion(currentForm, qid, { required: event.target.checked });
         editorMessage = '';
+        formSaveState = 'unsaved';
         draw();
       });
 
@@ -369,6 +457,7 @@ export async function renderApp(service) {
         delete currentResponse[qid];
         delete validationErrors[qid];
         editorMessage = '';
+        formSaveState = 'unsaved';
         draw();
       });
 
@@ -377,12 +466,14 @@ export async function renderApp(service) {
         delete currentResponse[qid];
         delete validationErrors[qid];
         editorMessage = '';
+        formSaveState = 'unsaved';
         draw();
       });
 
       questionEl.querySelector('[data-role="add-option"]')?.addEventListener('click', () => {
         currentForm = service.addOption(currentForm, qid);
         editorMessage = '';
+        formSaveState = 'unsaved';
         draw();
       });
 
@@ -392,11 +483,13 @@ export async function renderApp(service) {
         optionEl.querySelector('[data-role="option-label"]').addEventListener('input', (event) => {
           currentForm = service.updateOption(currentForm, qid, oid, event.target.value);
           editorMessage = '';
+          formSaveState = 'unsaved';
         });
 
         optionEl.querySelector('[data-role="remove-option"]').addEventListener('click', () => {
           currentForm = service.removeOption(currentForm, qid, oid);
           editorMessage = '';
+          formSaveState = 'unsaved';
           draw();
         });
       });
@@ -406,6 +499,7 @@ export async function renderApp(service) {
       buttonEl.addEventListener('click', () => {
         currentForm = service.insertQuestionAfter(currentForm, buttonEl.dataset.qid);
         editorMessage = '';
+        formSaveState = 'unsaved';
         draw();
       });
     });
@@ -414,13 +508,26 @@ export async function renderApp(service) {
       buttonEl.addEventListener('click', () => {
         currentForm = service.addQuestion(currentForm);
         editorMessage = '';
+        formSaveState = 'unsaved';
         draw();
       });
     });
 
+    editorEl.querySelector('[data-role="check-form"]').addEventListener('click', () => {
+      const warnings = getBuilderWarnings(currentForm);
+      editorMessage = warnings.length ? `公開前チェック: ${warnings.join(' ')}` : '公開前チェック: 問題は見つかりませんでした。';
+      draw();
+    });
+
     editorEl.querySelector('[data-role="save-form"]').addEventListener('click', async () => {
-      await service.saveForm(currentForm);
-      editorMessage = 'フォームを保存しました。';
+      try {
+        await service.saveForm(currentForm);
+        editorMessage = 'フォームを保存しました。';
+        formSaveState = 'saved';
+      } catch {
+        editorMessage = 'フォームの保存に失敗しました。';
+        formSaveState = 'error';
+      }
       draw();
     });
 
@@ -441,9 +548,22 @@ export async function renderApp(service) {
         navigate('dashboard');
       } catch (error) {
         editorMessage = error instanceof Error ? error.message : 'ログインに失敗しました。';
+        userIdInput.focus();
         draw();
       }
     });
+  };
+
+  const validateQuestionInteraction = (qid) => {
+    if (!currentForm) return;
+    const target = currentForm.questions.find((question) => question.id === qid);
+    if (!target) return;
+    const { errors } = service.validateResponse({ questions: [target] }, currentResponse);
+    if (errors[qid]) {
+      validationErrors[qid] = errors[qid];
+    } else {
+      delete validationErrors[qid];
+    }
   };
 
   const bindAnswerEvents = () => {
@@ -451,7 +571,12 @@ export async function renderApp(service) {
       el.addEventListener('input', (event) => {
         const qid = event.target.dataset.qid;
         currentResponse[qid] = event.target.value;
-        delete validationErrors[qid];
+        validateQuestionInteraction(qid);
+      });
+
+      el.addEventListener('blur', (event) => {
+        validateQuestionInteraction(event.target.dataset.qid);
+        draw();
       });
     });
 
@@ -459,7 +584,8 @@ export async function renderApp(service) {
       el.addEventListener('change', (event) => {
         const qid = event.target.dataset.qid;
         currentResponse[qid] = event.target.value;
-        delete validationErrors[qid];
+        validateQuestionInteraction(qid);
+        draw();
       });
     });
 
@@ -470,7 +596,8 @@ export async function renderApp(service) {
         currentResponse[qid] = event.target.checked
           ? [...current, event.target.value]
           : current.filter((item) => item !== event.target.value);
-        delete validationErrors[qid];
+        validateQuestionInteraction(qid);
+        draw();
       });
     });
 
@@ -480,7 +607,12 @@ export async function renderApp(service) {
       const validation = service.validateResponse(currentForm, currentResponse);
       validationErrors = validation.errors;
       if (!validation.isValid) {
+        const firstErrorQuestionId = Object.keys(validation.errors)[0];
+        submittedMessage = `未回答の必須項目が ${Object.keys(validation.errors).length} 件あります。`;
         draw();
+        setTimeout(() => {
+          root.querySelector(`[data-qid="${firstErrorQuestionId}"]`)?.focus();
+        }, 0);
         return;
       }
 
@@ -495,11 +627,22 @@ export async function renderApp(service) {
   };
 
   const bindDashboardEvents = () => {
+    root.querySelector('[data-role="dashboard-query"]')?.addEventListener('input', (event) => {
+      dashboardQuery = event.target.value;
+      draw();
+    });
+
+    root.querySelector('[data-role="dashboard-status-filter"]')?.addEventListener('change', (event) => {
+      dashboardStatusFilter = event.target.value;
+      draw();
+    });
+
     root.querySelector('[data-role="create-form"]')?.addEventListener('click', () => {
       currentForm = service.createEmptyForm();
       editorMessage = '';
       submittedMessage = '';
       validationErrors = {};
+      formSaveState = 'unsaved';
       navigate('builder', currentForm.id);
     });
 
