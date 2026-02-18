@@ -623,6 +623,46 @@ input[type='radio'] {
   margin-bottom: var(--space-3);
 }
 
+.dashboard-create-btn {
+  position: sticky;
+  top: 14px;
+}
+
+.dashboard-filters {
+  margin-top: var(--space-3);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.dashboard-filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: #556089;
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 4px 8px;
+  border-radius: 999px;
+}
+
+.status-chip-published {
+  color: #0f7a49;
+  background: #e6f8ef;
+}
+
+.status-chip-draft {
+  color: #855700;
+  background: #fff3d8;
+}
+
 .form-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -640,6 +680,29 @@ input[type='radio'] {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
+}
+
+.save-state {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 6px 10px;
+}
+
+.save-state-saved {
+  color: #0f7a49;
+  background: #e6f8ef;
+}
+
+.save-state-unsaved {
+  color: #855700;
+  background: #fff3d8;
+}
+
+.save-state-error {
+  color: #b6193f;
+  background: #ffe6ed;
 }
 
 .flow-actions {
@@ -667,4 +730,22 @@ input[type='radio'] {
   margin: var(--space-3) auto 0;
   color: #0f7a49;
   font-weight: 700;
+}
+
+.answer-progress {
+  margin-top: var(--space-3);
+}
+
+.answer-progress-track {
+  margin-top: 6px;
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: #e9edff;
+  overflow: hidden;
+}
+
+.answer-progress-fill {
+  height: 100%;
+  background: linear-gradient(135deg, #6658ff 0%, #3d7bff 100%);
 }
