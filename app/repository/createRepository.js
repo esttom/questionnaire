@@ -3,6 +3,7 @@ import { InMemoryQuestionnaireRepository } from './inMemoryQuestionnaireReposito
 const seedForms = [
   {
     id: 'form-customer-voice',
+    ownerId: 'demo-admin',
     title: '顧客満足度アンケート',
     description: 'ご利用体験の評価と改善要望を収集します。',
     questions: [

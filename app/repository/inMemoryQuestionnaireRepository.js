@@ -5,7 +5,7 @@ export class InMemoryQuestionnaireRepository extends QuestionnaireRepository {
   /** @param {import('../domain/formModels.js').FormDefinition[]} seedForms */
   constructor(seedForms) {
     super();
-    this.storageKey = 'questionnaire-storage-v1';
+    this.storageKey = 'questionnaire-storage-v2';
     const persisted = this.loadPersistedData();
     const initialForms = persisted?.forms ?? seedForms;
     const initialResponses = persisted?.responsesByForm ?? seedForms.map((form) => [form.id, []]);
@@ -55,17 +55,29 @@ export class InMemoryQuestionnaireRepository extends QuestionnaireRepository {
     }
   }
 
-  async getForms() {
-    return Array.from(this.forms.values()).map((form) => structuredClone(form));
+  async getForms(userId) {
+    return Array.from(this.forms.values())
+      .filter((form) => form.ownerId === userId)
+      .map((form) => structuredClone(form));
   }
 
-  async getForm(formId) {
+  async getForm(userId, formId) {
+    const form = this.forms.get(formId);
+    if (!form || form.ownerId !== userId) throw new Error('Form not found');
+    return structuredClone(form);
+  }
+
+  async getPublicForm(formId) {
     const form = this.forms.get(formId);
     if (!form) throw new Error('Form not found');
     return structuredClone(form);
   }
 
-  async saveForm(form) {
+  async saveForm(userId, form) {
+    if (form.ownerId !== userId) {
+      throw new Error('Forbidden');
+    }
+
     this.forms.set(form.id, structuredClone(form));
     if (!this.responsesByForm.has(form.id)) {
       this.responsesByForm.set(form.id, []);
@@ -81,8 +93,9 @@ export class InMemoryQuestionnaireRepository extends QuestionnaireRepository {
     this.persist();
   }
 
-  async getResponses(formId) {
-    if (!this.forms.has(formId)) throw new Error('Form not found');
+  async getResponses(userId, formId) {
+    const form = this.forms.get(formId);
+    if (!form || form.ownerId !== userId) throw new Error('Form not found');
     return structuredClone(this.responsesByForm.get(formId) || []);
   }
 }
