@@ -5,8 +5,54 @@ export class InMemoryQuestionnaireRepository extends QuestionnaireRepository {
   /** @param {import('../domain/formModels.js').FormDefinition[]} seedForms */
   constructor(seedForms) {
     super();
-    this.forms = new Map(seedForms.map((form) => [form.id, structuredClone(form)]));
-    this.responsesByForm = new Map(seedForms.map((form) => [form.id, []]));
+    this.storageKey = 'questionnaire-storage-v1';
+    const persisted = this.loadPersistedData();
+    const initialForms = persisted?.forms ?? seedForms;
+    const initialResponses = persisted?.responsesByForm ?? seedForms.map((form) => [form.id, []]);
+
+    this.forms = new Map(initialForms.map((form) => [form.id, structuredClone(form)]));
+    this.responsesByForm = new Map(initialResponses.map(([formId, responses]) => [formId, structuredClone(responses)]));
+
+    this.persist();
+  }
+
+  loadPersistedData() {
+    try {
+      if (typeof localStorage === 'undefined') {
+        return null;
+      }
+
+      const raw = localStorage.getItem(this.storageKey);
+      if (!raw) {
+        return null;
+      }
+
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed.forms) || !Array.isArray(parsed.responsesByForm)) {
+        return null;
+      }
+
+      return parsed;
+    } catch {
+      return null;
+    }
+  }
+
+  persist() {
+    try {
+      if (typeof localStorage === 'undefined') {
+        return;
+      }
+
+      const payload = {
+        forms: Array.from(this.forms.values()),
+        responsesByForm: Array.from(this.responsesByForm.entries())
+      };
+
+      localStorage.setItem(this.storageKey, JSON.stringify(payload));
+    } catch {
+      // localStorage が使えない環境ではメモリ上の挙動のみ継続する。
+    }
   }
 
   async getForms() {
@@ -24,6 +70,7 @@ export class InMemoryQuestionnaireRepository extends QuestionnaireRepository {
     if (!this.responsesByForm.has(form.id)) {
       this.responsesByForm.set(form.id, []);
     }
+    this.persist();
   }
 
   async submitResponse(formId, response) {
@@ -31,6 +78,7 @@ export class InMemoryQuestionnaireRepository extends QuestionnaireRepository {
     const responses = this.responsesByForm.get(formId) || [];
     responses.push(structuredClone(response));
     this.responsesByForm.set(formId, responses);
+    this.persist();
   }
 
   async getResponses(formId) {
